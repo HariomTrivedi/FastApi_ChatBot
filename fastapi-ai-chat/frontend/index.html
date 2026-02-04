@@ -595,6 +595,35 @@
         word-wrap: break-word;
         overflow-wrap: break-word;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+
+      .chat-message:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      }
+
+      /* Different hover effects for touch vs non-touch devices */
+      @media (hover: hover) and (pointer: fine) {
+        .chat-message:hover {
+          transform: translateY(-1px) scale(1.01);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+          cursor: pointer;
+        }
+
+        .chat-message:active {
+          transform: translateY(0) scale(0.99);
+          transition: all 0.1s ease;
+        }
+      }
+
+      /* Disable hover effects on touch devices */
+      @media (hover: none) {
+        .chat-message:hover {
+          transform: none;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
       }
 
       @keyframes messageSlideIn {
@@ -851,6 +880,13 @@
         100% { transform: translateY(0); }
       }
 
+      @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(-10px); }
+        10% { opacity: 1; transform: translateY(0); }
+        90% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-10px); }
+      }
+
       /* File and Image display styles */
       .message-image {
         max-width: 100%;
@@ -992,11 +1028,534 @@
         }
       }
 
+      /* Reply indicator styles - WhatsApp/Telegram Style */
+      .reply-indicator {
+        display: flex;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.04);
+        border-left: 3px solid #667eea;
+        border-radius: 0 8px 8px 0;
+        padding: 8px 12px;
+        margin: 0 0 8px 0;
+        position: relative;
+        animation: slideInReply 0.2s ease-out;
+        backdrop-filter: blur(4px);
+      }
+
+      .reply-indicator-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .reply-line {
+        width: 3px;
+        height: 100%;
+        background: #667eea;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      .reply-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .reply-to {
+        font-size: 12px;
+        font-weight: 600;
+        color: #667eea;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .reply-preview {
+        font-size: 13px;
+        color: #4a5568;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0.8;
+      }
+
+      .reply-cancel {
+        background: rgba(0, 0, 0, 0.05);
+        border: none;
+        color: #666;
+        font-size: 16px;
+        font-weight: normal;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 8px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        min-height: 24px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      .reply-cancel:hover {
+        background: rgba(0, 0, 0, 0.15);
+        color: #333;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        transform: scale(1.05);
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes slideDownReply {
+        from {
+          opacity: 0;
+          transform: translateY(-20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes slideInReply {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes pulseGlow {
+        0%, 100% {
+          box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        50% {
+          box-shadow: 0 4px 25px rgba(102, 126, 234, 0.25), 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+      }
+
+      /* Reply message styles - Modern Design */
+      .message-reply {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+        border: 1px solid rgba(102, 126, 234, 0.15);
+        border-left: 4px solid #667eea;
+        border-radius: 12px;
+        animation: fadeInReply 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(4px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .message-reply::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%);
+        pointer-events: none;
+      }
+
+      .reply-line {
+        width: 3px;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 2px;
+        opacity: 0.8;
+        box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+      }
+
+      .reply-content {
+        flex: 1;
+        min-width: 0;
+        position: relative;
+        z-index: 1;
+      }
+
+      .reply-sender {
+        font-size: 13px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 4px;
+        letter-spacing: 0.2px;
+      }
+
+      .reply-text {
+        font-size: 14px;
+        color: #4a5568;
+        opacity: 0.9;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+
+      @keyframes fadeInReply {
+        from {
+          opacity: 0;
+          transform: translateX(-10px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+        }
+      }
+
+      /* Reply indicator responsive design */
+      /* Tablet and larger mobile devices */
+      @media (max-width: 1024px) {
+        .reply-indicator {
+          padding: 10px 14px;
+          margin: 0 0 10px 0;
+        }
+
+        .reply-indicator-content {
+          gap: 10px;
+        }
+
+        .reply-line {
+          width: 3px;
+        }
+
+        .reply-to {
+          font-size: 12px;
+        }
+
+        .reply-preview {
+          font-size: 13px;
+        }
+      }
+
+      /* Mobile devices */
+      /* Mobile devices */
+      @media (max-width: 768px) {
+        .reply-indicator {
+          padding: 8px 12px;
+          margin: 0 0 8px 0;
+          border-radius: 0 6px 6px 0;
+        }
+
+        .reply-indicator-content {
+          gap: 8px;
+        }
+
+        .reply-line {
+          width: 3px;
+        }
+
+        .reply-to {
+          font-size: 12px;
+        }
+
+        .reply-preview {
+          font-size: 13px;
+        }
+
+        .reply-cancel {
+          width: 22px;
+          height: 22px;
+          font-size: 14px;
+          margin-left: 6px;
+          min-width: 22px;
+          min-height: 22px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+      }
+
+      /* Small mobile devices */
+      @media (max-width: 480px) {
+        .reply-indicator {
+          padding: 6px 10px;
+          margin: 0 0 6px 0;
+          border-left-width: 2px;
+          border-radius: 0 4px 4px 0;
+        }
+
+        .reply-indicator-content {
+          gap: 6px;
+        }
+
+        .reply-line {
+          width: 2px;
+        }
+
+        .reply-info {
+          gap: 1px;
+        }
+
+        .reply-to {
+          font-size: 11px;
+        }
+
+        .reply-preview {
+          font-size: 12px;
+        }
+
+        .reply-cancel {
+          width: 20px;
+          height: 20px;
+          font-size: 12px;
+          margin-left: 4px;
+          min-width: 20px;
+          min-height: 20px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+      }
+
+      /* Very small screens */
+      @media (max-width: 360px) {
+        .reply-indicator {
+          padding: 4px 8px;
+          margin: 0 0 4px 0;
+          border-left-width: 2px;
+        }
+
+        .reply-indicator-content {
+          gap: 4px;
+        }
+
+        .reply-line {
+          width: 2px;
+        }
+
+        .reply-to {
+          font-size: 10px;
+        }
+
+        .reply-preview {
+          font-size: 11px;
+        }
+
+        .reply-cancel {
+          width: 18px;
+          height: 18px;
+          font-size: 10px;
+          margin-left: 2px;
+          min-width: 18px;
+          min-height: 18px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        }
+      }
+
+      /* Landscape orientation on mobile */
+      @media (max-width: 896px) and (max-height: 500px) and (orientation: landscape) {
+        .reply-indicator {
+          padding: 6px 10px;
+          margin: 0 0 6px 0;
+        }
+
+        .reply-to {
+          font-size: 11px;
+        }
+
+        .reply-preview {
+          font-size: 12px;
+        }
+      }
+
+      /* Large tablets and small desktops */
+      @media (min-width: 1025px) and (max-width: 1440px) {
+        .reply-indicator {
+          padding: 10px 16px;
+          max-width: 500px;
+          margin: 0 auto 10px auto;
+        }
+
+        .reply-to {
+          font-size: 13px;
+        }
+
+        .reply-preview {
+          font-size: 14px;
+        }
+      }
+
+      /* High DPI displays */
+      @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+        .reply-indicator {
+          border-left-width: 2px; /* Ensure border is crisp on high DPI */
+        }
+      }
+
+      /* Reply message responsive design */
+      @media (max-width: 768px) {
+        .message-reply {
+          padding: 10px 14px;
+          margin-bottom: 10px;
+          gap: 10px;
+        }
+
+        .reply-line {
+          width: 2px;
+        }
+
+        .reply-content {
+          gap: 6px;
+        }
+
+        .reply-sender {
+          font-size: 12px;
+          margin-bottom: 3px;
+        }
+
+        .reply-text {
+          font-size: 13px;
+          line-height: 1.4;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .message-reply {
+          padding: 8px 12px;
+          margin-bottom: 8px;
+          gap: 8px;
+          border-radius: 10px;
+        }
+
+        .reply-line {
+          width: 2px;
+        }
+
+        .reply-sender {
+          font-size: 11px;
+          margin-bottom: 2px;
+        }
+
+        .reply-text {
+          font-size: 12px;
+          line-height: 1.3;
+        }
+      }
+
+      @media (max-width: 360px) {
+        .message-reply {
+          padding: 6px 10px;
+          margin-bottom: 6px;
+          gap: 6px;
+          border-radius: 8px;
+        }
+
+        .reply-line {
+          width: 1.5px;
+        }
+
+        .reply-sender {
+          font-size: 10px;
+          margin-bottom: 1px;
+        }
+
+        .reply-text {
+          font-size: 11px;
+          line-height: 1.2;
+        }
+      }
+
       /* Touch-friendly interactions */
       @media (pointer: coarse) {
         .chat-close:active {
           transform: scale(0.95);
         }
+
+        /* Improve touch targets for reply functionality */
+        .chat-message {
+          min-height: 48px; /* Minimum touch target */
+          padding: 18px 22px;
+        }
+
+        .reply-indicator {
+          min-height: 56px; /* Ensure good touch target */
+        }
+
+        .reply-cancel {
+          min-width: 32px;
+          min-height: 32px;
+          border-radius: 50%;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Better swipe feedback on touch devices */
+        .chat-message:active {
+          transform: scale(0.98);
+          transition: transform 0.1s ease;
+        }
+
+        .chat-message:touch-manipulates {
+          touch-action: pan-y; /* Allow vertical scrolling but prevent zoom */
+        }
+
+        /* Enhanced accessibility */
+        .reply-cancel:focus,
+        .chat-message:focus {
+          outline: 2px solid #667eea;
+          outline-offset: 2px;
+        }
+
+        /* Reduced motion for users who prefer it */
+        @media (prefers-reduced-motion: reduce) {
+          .reply-indicator,
+          .message-reply,
+          .chat-message {
+            animation: none;
+            transition: none;
+          }
+
+          .reply-indicator {
+            animation: none !important;
+          }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+          .reply-indicator {
+            border-left: 3px solid #000;
+            background: #fff;
+            color: #000;
+          }
+
+          .reply-line {
+            background: #000;
+          }
+
+          .reply-cancel {
+            border: 2px solid #000;
+            background: #fff;
+            color: #000;
+          }
+        }
+      }
 
         .chat-send:active {
           transform: scale(0.98);
@@ -1892,6 +2451,8 @@
 
     <!-- Context menu for message actions -->
     <div id="message-context-menu" style="display: none; position: fixed; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 150px;">
+      <div id="context-menu-reply" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee;">Reply</div>
+      <div id="context-menu-copy" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee;">Copy Message</div>
       <div id="context-menu-edit" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee; display: block;">Edit Message</div>
       <div id="context-menu-delete" style="padding: 12px 16px; cursor: pointer; color: #dc3545;">Delete Message</div>
     </div>

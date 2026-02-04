@@ -69,9 +69,11 @@ class ChatMessage(Base):
     file_name = Column(String, nullable=True)  # Original filename
     file_size = Column(BigInteger, nullable=True)  # File size in bytes
     mime_type = Column(String, nullable=True)  # MIME type of the file
+    reply_to_message_id = Column(Integer, ForeignKey("chat_messages.id"), nullable=True)  # Reply to another message
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     sender = relationship("User", foreign_keys=[sender_id], backref="sent_messages")
     receiver = relationship("User", foreign_keys=[receiver_id], backref="received_messages")
+    reply_to_message = relationship("ChatMessage", remote_side=[id], backref="replies")

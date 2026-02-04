@@ -49,17 +49,43 @@ async def send_message(
             detail="You can only send messages to friends"
         )
 
+    # Validate reply_to_message_id if provided
+    reply_to_message = None
+    if message_data.reply_to_message_id:
+        reply_to_message = db.query(ChatMessage).filter(
+            ChatMessage.id == message_data.reply_to_message_id,
+            ((ChatMessage.sender_id == current_user.id) & (ChatMessage.receiver_id == message_data.receiver_id)) |
+            ((ChatMessage.sender_id == message_data.receiver_id) & (ChatMessage.receiver_id == current_user.id))
+        ).first()
+
+        if not reply_to_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Reply message not found or not accessible"
+            )
+
     # Create the message
     message = ChatMessage(
         sender_id=current_user.id,
         receiver_id=message_data.receiver_id,
         content=message_data.content,
-        message_type=MessageType.TEXT.value
+        message_type=MessageType.TEXT.value,
+        reply_to_message_id=message_data.reply_to_message_id
     )
 
     db.add(message)
     db.commit()
     db.refresh(message)
+
+    # Prepare reply message data if this is a reply
+    reply_data = None
+    if reply_to_message:
+        reply_data = {
+            "id": reply_to_message.id,
+            "content": reply_to_message.content,
+            "sender_username": reply_to_message.sender.username if reply_to_message.sender else "Unknown",
+            "message_type": reply_to_message.message_type
+        }
 
     # Send WebSocket notification to receiver
     await ws_manager.send_to_user(
@@ -73,6 +99,8 @@ async def send_message(
                 "receiver_id": message_data.receiver_id,
                 "content": message_data.content,
                 "message_type": message.message_type,
+                "reply_to_message_id": message.reply_to_message_id,
+                "reply_to_message": reply_data,
                 "is_read": False,
                 "created_at": message.created_at.isoformat()
             }
@@ -86,10 +114,12 @@ async def send_message(
         receiver_id=message.receiver_id,
         content=message.content,
         message_type=message.message_type,
+        reply_to_message_id=message.reply_to_message_id,
         is_read=message.is_read,
         created_at=message.created_at,
         sender=current_user,
-        receiver=receiver
+        receiver=receiver,
+        reply_to_message=reply_to_message
     )
 
 
@@ -116,10 +146,12 @@ async def get_conversation(
             detail="You can only view messages with friends"
         )
 
-    # Get all messages between the two users, eagerly loading sender and receiver
+    # Get all messages between the two users, eagerly loading sender, receiver, and reply_to_message
     messages = db.query(ChatMessage).options(
         joinedload(ChatMessage.sender),
-        joinedload(ChatMessage.receiver)
+        joinedload(ChatMessage.receiver),
+        joinedload(ChatMessage.reply_to_message).joinedload(ChatMessage.sender),
+        joinedload(ChatMessage.reply_to_message).joinedload(ChatMessage.receiver)
     ).filter(
         ((ChatMessage.sender_id == current_user.id) & (ChatMessage.receiver_id == friend_id)) |
         ((ChatMessage.sender_id == friend_id) & (ChatMessage.receiver_id == current_user.id))
@@ -143,10 +175,12 @@ async def get_conversation(
             file_name=message.file_name,
             file_size=message.file_size,
             mime_type=message.mime_type,
+            reply_to_message_id=message.reply_to_message_id,
             is_read=message.is_read,
             created_at=message.created_at,
             sender=message.sender,
-            receiver=message.receiver
+            receiver=message.receiver,
+            reply_to_message=message.reply_to_message
         ))
 
     return result

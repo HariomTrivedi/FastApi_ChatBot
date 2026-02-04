@@ -73,6 +73,7 @@ class ChatMessageBase(BaseModel):
 
 class ChatMessageCreate(ChatMessageBase):
     receiver_id: int
+    reply_to_message_id: Optional[int] = None
 
 
 class ChatMessageUpdate(BaseModel):
@@ -89,10 +90,12 @@ class ChatMessageResponse(BaseModel):
     file_name: Optional[str] = None
     file_size: Optional[int] = None
     mime_type: Optional[str] = None
+    reply_to_message_id: Optional[int] = None
     is_read: bool
     created_at: datetime
     sender: UserResponse
     receiver: UserResponse
+    reply_to_message: Optional['ChatMessageResponse'] = None
 
     class Config:
         from_attributes = True

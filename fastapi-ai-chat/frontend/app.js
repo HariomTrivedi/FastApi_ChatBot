@@ -36,6 +36,34 @@ let isEditMode = false;
 let editMessageId = null;
 let editFriendId = null;
 
+// Reply mode variables
+let isReplyMode = false;
+let replyMessageId = null;
+let replyFriendId = null;
+let replyMessageData = null;
+
+// Function to generate avatar colors based on username
+function getAvatarColor(username) {
+  const colors = [
+    'linear-gradient(135deg, #667eea, #764ba2)', // Purple
+    'linear-gradient(135deg, #f093fb, #f5576c)', // Pink
+    'linear-gradient(135deg, #4facfe, #00f2fe)', // Blue
+    'linear-gradient(135deg, #43e97b, #38f9d7)', // Green
+    'linear-gradient(135deg, #fa709a, #fee140)', // Orange
+    'linear-gradient(135deg, #a8edea, #fed6e3)', // Light blue
+    'linear-gradient(135deg, #ff9a9e, #fecfef)', // Light pink
+    'linear-gradient(135deg, #ffecd2, #fcb69f)'  // Peach
+  ];
+
+  // Simple hash function to get consistent color for same username
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return colors[Math.abs(hash) % colors.length];
+}
+
 async function fetchActiveUsers() {
   const token = await getToken(true);
   if (!token) return;
@@ -475,18 +503,21 @@ function handleFriendRemoved(data) {
 function handleChatMessage(data) {
   console.log("Chat message received:", data);
 
+  // Extract the actual message data from the WebSocket message
+  const messageData = data.data || data;
+
   // If we have an active chat with this user, add the message
-  const chatWindow = document.getElementById(`chat-window-${data.sender_id}`);
+  const chatWindow = document.getElementById(`chat-window-${messageData.sender_id}`);
   if (chatWindow && chatWindow.style.display !== 'none') {
-    addMessageToChat(data.sender_id, data);
+    addMessageToChat(messageData.sender_id, messageData);
     // Mark messages as read since user is actively viewing the chat
-    markMessagesAsRead(data.sender_id);
+    markMessagesAsRead(messageData.sender_id);
   } else {
     // Show notification for new message
-    const notificationText = data.message_type === 'image' ? '📷 sent an image' :
-                             data.message_type === 'file' ? `📎 sent ${data.file_name || 'a file'}` :
-                             data.content;
-    showChatNotification(data.sender_username, notificationText, data.sender_id);
+    const notificationText = messageData.message_type === 'image' ? '📷 sent an image' :
+                             messageData.message_type === 'file' ? `📎 sent ${messageData.file_name || 'a file'}` :
+                             messageData.content;
+    showChatNotification(messageData.sender_username, notificationText, messageData.sender_id);
   }
 }
 
@@ -558,6 +589,7 @@ function createChatWindow(friendId) {
       <button class="chat-close" onclick="closeChatWindow(${friendId})" title="Close chat"></button>
     </div>
     <div class="chat-messages" id="chat-messages-${friendId}"></div>
+    <div id="reply-indicator-${friendId}" class="reply-indicator" style="display: none;"></div>
     <div class="chat-input-area" style="position: relative;">
       <div class="chat-upload-buttons">
         <label class="chat-upload-btn" title="Upload file (images, audio, documents, etc.)" for="file-upload-${friendId}">
@@ -789,12 +821,18 @@ function addMessageToChat(friendId, message) {
 
   const messageType = message.message_type || 'text';
 
+  // Normalize sender_username for both API and WebSocket data
+  if (!message.sender_username && message.sender) {
+    message.sender_username = message.sender.username;
+  }
+
   const messageDiv = document.createElement('div');
   messageDiv.className = `chat-message ${message.sender_id === currentUserId ? 'sent' : 'received'}`;
   messageDiv.dataset.messageId = message.id;
   messageDiv.dataset.friendId = friendId;
   messageDiv.dataset.senderId = message.sender_id;
   messageDiv.dataset.messageType = messageType;
+  messageDiv.title = window.innerWidth > 768 ? 'Double-click to reply • Right-click for options' : 'Swipe to reply • Long-press for options';
 
   // Always display time in IST (manually converted from UTC / server time)
   const timestamp = formatISTTime(message.created_at);
@@ -805,6 +843,33 @@ function addMessageToChat(friendId, message) {
     const readStatus = message.is_read ? '✓✓' : '✓';
     const readClass = message.is_read ? 'read' : '';
     readReceiptHtml = `<span id="read-receipt-${message.id}" class="read-receipt ${readClass}" title="${message.is_read ? 'Message read' : 'Message sent'}">${readStatus}</span>`;
+  }
+
+  // Handle reply context
+  let replyHtml = '';
+  if (message.reply_to_message_id && message.reply_to_message) {
+    // Handle both API response (sender.username) and WebSocket data (sender_username)
+    const replySender = message.reply_to_message.sender_username ||
+                       (message.reply_to_message.sender && message.reply_to_message.sender.username) ||
+                       'Unknown';
+    const replyContent = message.reply_to_message.content ?
+      (message.reply_to_message.content.length > 50 ? message.reply_to_message.content.substring(0, 50) + '...' : message.reply_to_message.content) :
+      'Message';
+    const replyAvatarLetter = replySender.charAt(0).toUpperCase();
+    const replyAvatarColor = getAvatarColor(replySender);
+
+    replyHtml = `
+      <div class="message-reply">
+        <div class="reply-line"></div>
+        <div class="reply-content">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <div class="reply-avatar-small" style="background: ${replyAvatarColor}">${replyAvatarLetter}</div>
+            <div class="reply-sender">${replySender}</div>
+          </div>
+          <div class="reply-text">${replyContent}</div>
+        </div>
+      </div>
+    `;
   }
 
   // Handle different message types
@@ -862,6 +927,7 @@ function addMessageToChat(friendId, message) {
   }
 
   messageDiv.innerHTML = `
+    ${replyHtml}
     ${contentHtml}
     <div class="message-footer">
       <span style="font-size: 10px; opacity: 0.7;">${timestamp}</span>
@@ -872,36 +938,183 @@ function addMessageToChat(friendId, message) {
   messagesEl.appendChild(messageDiv);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
-  // Right-click and long-press context menu (sent messages only)
-  if (message.sender_id === currentUserId) {
-    messageDiv.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showMessageContextMenu(e, message.id, friendId, messageType, message.content || '', messageDiv);
-    });
-    let longPressTimer;
-    messageDiv.addEventListener('touchstart', (e) => {
+  // Right-click and long-press context menu (all messages)
+  messageDiv.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showMessageContextMenu(e, message.id, friendId, messageType, message.content || '', messageDiv, message.sender_id === currentUserId);
+  });
+
+  // Enhanced swipe detection for reply functionality (mobile-optimized)
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let isSwiping = false;
+  let longPressTimer;
+  let hasMoved = false;
+
+  messageDiv.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return; // Only handle single touch
+
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+    isSwiping = false;
+    hasMoved = false;
+
+    // Add touch feedback
+    messageDiv.style.transition = 'none';
+
+    // Start long press timer for context menu (only on mobile)
+    if (window.innerWidth <= 768) {
       longPressTimer = setTimeout(() => {
         longPressTimer = null;
-        e.preventDefault();
-        const touch = e.touches[0] || e.changedTouches[0];
-        showMessageContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, message.id, friendId, messageType, message.content || '', messageDiv);
-      }, 500);
-    }, { passive: true });
-    messageDiv.addEventListener('touchend', () => { if (longPressTimer) clearTimeout(longPressTimer); });
-    messageDiv.addEventListener('touchmove', () => { if (longPressTimer) clearTimeout(longPressTimer); longPressTimer = null; });
-  }
+        if (!isSwiping && !hasMoved) {
+          e.preventDefault();
+          const touch = e.touches[0];
+          showMessageContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, message.id, friendId, messageType, message.content || '', messageDiv, message.sender_id === currentUserId);
+        }
+      }, 600); // Slightly longer for better UX
+    }
+  }, { passive: false }); // Changed to false to allow preventDefault
+
+  messageDiv.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1 || !touchStartX || !touchStartY) return;
+
+    const touchCurrentX = e.touches[0].clientX;
+    const touchCurrentY = e.touches[0].clientY;
+    const diffX = touchCurrentX - touchStartX;
+    const diffY = touchCurrentY - touchStartY;
+    const absDiffX = Math.abs(diffX);
+    const absDiffY = Math.abs(diffY);
+
+    hasMoved = absDiffX > 5 || absDiffY > 5; // Consider it moved if > 5px
+
+    // Check if this is a horizontal swipe (more horizontal than vertical movement)
+    if (absDiffX > absDiffY && absDiffX > 30 && absDiffY < 50) {
+      isSwiping = true;
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+
+      // Prevent scrolling while swiping
+      e.preventDefault();
+
+      // Add swipe visual feedback with better mobile UX
+      const maxSwipe = window.innerWidth <= 480 ? 80 : 100; // Smaller on mobile
+      const swipeDistance = Math.min(absDiffX, maxSwipe);
+      const opacity = Math.max(0.8, 1 - swipeDistance / (maxSwipe * 2));
+
+      if (diffX > 0) {
+        // Swipe right
+        messageDiv.style.transform = `translateX(${swipeDistance}px) rotate(${swipeDistance * 0.1}deg)`;
+        messageDiv.style.opacity = opacity;
+        messageDiv.style.boxShadow = `${swipeDistance * 0.1}px 4px 20px rgba(102, 126, 234, 0.3)`;
+      } else {
+        // Swipe left
+        messageDiv.style.transform = `translateX(-${swipeDistance}px) rotate(-${swipeDistance * 0.1}deg)`;
+        messageDiv.style.opacity = opacity;
+        messageDiv.style.boxShadow = `-${swipeDistance * 0.1}px 4px 20px rgba(102, 126, 234, 0.3)`;
+      }
+    }
+  }, { passive: false });
+
+  messageDiv.addEventListener('touchend', (e) => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+
+    // Reset styles
+    messageDiv.style.transform = '';
+    messageDiv.style.opacity = '';
+    messageDiv.style.boxShadow = '';
+    messageDiv.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+
+    if (isSwiping) {
+      const touchEndX = e.changedTouches[0].clientX;
+      const diffX = touchEndX - touchStartX;
+      const touchDuration = Date.now() - touchStartTime;
+      const absDiffX = Math.abs(diffX);
+
+      // Check if swipe was significant enough for mobile
+      const minSwipeDistance = window.innerWidth <= 480 ? 60 : 80; // Smaller threshold on mobile
+      const maxDuration = 600; // Allow slightly longer swipes on mobile
+
+      if (absDiffX > minSwipeDistance && touchDuration < maxDuration) {
+        // Trigger reply for this message
+        const messageData = {
+          id: message.id,
+          content: message.content,
+          sender_username: message.sender_id === currentUserId ? 'You' : (message.sender_username || 'Sender'),
+          message_type: messageType
+        };
+
+        setReplyMode(message.id, friendId, messageData, document.getElementById(`chat-input-${friendId}`));
+
+        // Enhanced success animation for mobile
+        messageDiv.style.transform = 'scale(1.05)';
+        messageDiv.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.4)';
+
+        setTimeout(() => {
+          messageDiv.style.transform = '';
+          messageDiv.style.boxShadow = '';
+        }, 200);
+      }
+    }
+
+    // Reset flags
+    isSwiping = false;
+    hasMoved = false;
+  }, { passive: true });
+
+  // Double-click to reply (desktop alternative to swipe)
+  messageDiv.addEventListener('dblclick', (e) => {
+    // Don't trigger on mobile (where double-click might not be intended)
+    if (window.innerWidth <= 768) return;
+
+    e.preventDefault();
+
+    const messageData = {
+      id: message.id,
+      content: message.content,
+      sender_username: message.sender_id === currentUserId ? 'You' : (message.sender_username || 'Sender'),
+      message_type: messageType
+    };
+
+    setReplyMode(message.id, friendId, messageData, document.getElementById(`chat-input-${friendId}`));
+  });
 }
 
 let contextMenuTarget = null;
 
-function showMessageContextMenu(e, messageId, friendId, messageType, content, messageDiv) {
+function showMessageContextMenu(e, messageId, friendId, messageType, content, messageDiv, isSentMessage) {
   const menu = document.getElementById('message-context-menu');
   if (!menu) return;
-  contextMenuTarget = { messageId, friendId, messageType, content, messageDiv };
+  contextMenuTarget = { messageId, friendId, messageType, content, messageDiv, isSentMessage };
+  const replyBtn = document.getElementById('context-menu-reply');
   const editBtn = document.getElementById('context-menu-edit');
-  if (editBtn) {
-    editBtn.style.display = messageType === 'text' ? 'block' : 'none';
+  const copyBtn = document.getElementById('context-menu-copy');
+  const deleteBtn = document.getElementById('context-menu-delete');
+
+  // Show reply option for all message types
+  if (replyBtn) {
+    replyBtn.style.display = 'block';
   }
+
+  // Show copy option for text messages only
+  if (copyBtn) {
+    copyBtn.style.display = messageType === 'text' ? 'block' : 'none';
+  }
+
+  // Show edit and delete options only for sent messages
+  if (editBtn) {
+    editBtn.style.display = (messageType === 'text' && isSentMessage) ? 'block' : 'none';
+  }
+  if (deleteBtn) {
+    deleteBtn.style.display = isSentMessage ? 'block' : 'none';
+  }
+
   menu.style.display = 'block';
   menu.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
   menu.style.top = Math.min(e.clientY, window.innerHeight - 100) + 'px';
@@ -914,6 +1127,106 @@ function hideMessageContextMenu() {
 }
 
 document.addEventListener('click', () => hideMessageContextMenu());
+
+document.getElementById('context-menu-reply')?.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!contextMenuTarget) return;
+  const { messageId, friendId, messageType, content, messageDiv } = contextMenuTarget;
+  hideMessageContextMenu();
+
+  // Set reply mode for this message
+  const messageData = {
+    id: messageId,
+    content: content,
+    sender_username: messageDiv.dataset.senderId === currentUserId ? 'You' : 'Sender',
+    message_type: messageType
+  };
+
+  setReplyMode(messageId, friendId, messageData, document.getElementById(`chat-input-${friendId}`));
+});
+
+// Function to copy text to clipboard
+async function copyMessageToClipboard(content) {
+  try {
+    await navigator.clipboard.writeText(content);
+    // Show a brief success indication
+    const notification = document.createElement('div');
+    notification.textContent = 'Copied to clipboard!';
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #28a745;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      font-size: 14px;
+      animation: fadeInOut 2s ease-in-out;
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => document.body.removeChild(notification), 2000);
+  } catch (err) {
+    console.error('Failed to copy text: ', err);
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = content;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      const notification = document.createElement('div');
+      notification.textContent = 'Copied to clipboard!';
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-size: 14px;
+        animation: fadeInOut 2s ease-in-out;
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 2000);
+    } catch (fallbackErr) {
+      console.error('Fallback copy failed: ', fallbackErr);
+      alert('Failed to copy to clipboard');
+    }
+    document.body.removeChild(textArea);
+  }
+}
+
+document.getElementById('context-menu-copy')?.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!contextMenuTarget) return;
+  const { messageType, content, messageDiv } = contextMenuTarget;
+  hideMessageContextMenu();
+
+  // Only copy text messages
+  if (messageType !== 'text') {
+    alert('Can only copy text messages');
+    return;
+  }
+
+  // Get the text content from the message
+  const contentEl = messageDiv.querySelector('.emoji-message') || messageDiv.firstElementChild;
+  const textToCopy = contentEl ? (contentEl.textContent || contentEl.innerText || content) : content;
+
+  if (textToCopy && textToCopy.trim()) {
+    await copyMessageToClipboard(textToCopy.trim());
+  } else {
+    alert('No text to copy');
+  }
+});
 
 document.getElementById('context-menu-edit')?.addEventListener('click', async (e) => {
   e.stopPropagation();
@@ -1007,19 +1320,29 @@ async function sendChatMessage(friendId) {
 
       // Exit edit mode
       exitEditMode(inputEl);
+      // Also clear reply mode if active
+      if (isReplyMode && replyFriendId === friendId) {
+        clearReplyMode(friendId);
+      }
       return;
     } else {
-      // Send new message
+      // Send new message (with reply context if in reply mode)
+      const requestBody = {
+        receiver_id: friendId,
+        content: message
+      };
+
+      if (isReplyMode && replyMessageId && replyFriendId === friendId) {
+        requestBody.reply_to_message_id = replyMessageId;
+      }
+
       response = await fetch('/messages/send', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          receiver_id: friendId,
-          content: message
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -1035,6 +1358,11 @@ async function sendChatMessage(friendId) {
 
     // Clear input
     inputEl.value = '';
+
+    // Clear reply mode if it was active
+    if (isReplyMode && replyFriendId === friendId) {
+      clearReplyMode(friendId);
+    }
 
     // Mark messages as read only if chat window is currently open and visible
     const chatWindow = document.getElementById(`chat-window-${friendId}`);
@@ -1058,12 +1386,62 @@ function exitEditMode(inputEl) {
   }
 }
 
+function setReplyMode(messageId, friendId, messageData, inputEl) {
+  isReplyMode = true;
+  replyMessageId = messageId;
+  replyFriendId = friendId;
+  replyMessageData = messageData;
+  if (inputEl) {
+    inputEl.placeholder = 'Reply to message...';
+    inputEl.focus();
+  }
+  updateReplyIndicator(friendId);
+}
+
+function clearReplyMode(friendId) {
+  isReplyMode = false;
+  replyMessageId = null;
+  replyFriendId = null;
+  replyMessageData = null;
+  updateReplyIndicator(friendId);
+}
+
+function updateReplyIndicator(friendId) {
+  const replyIndicator = document.getElementById(`reply-indicator-${friendId}`);
+  if (!replyIndicator) return;
+
+  if (isReplyMode && replyFriendId === friendId && replyMessageData) {
+    const senderName = replyMessageData.sender_username || 'Unknown';
+    const previewText = replyMessageData.content ?
+      (replyMessageData.content.length > 50 ? replyMessageData.content.substring(0, 50) + '...' : replyMessageData.content) :
+      'Message';
+
+    replyIndicator.innerHTML = `
+      <div class="reply-indicator-content">
+        <div class="reply-line"></div>
+        <div class="reply-info">
+          <div class="reply-to">${senderName}</div>
+          <div class="reply-preview">${previewText}</div>
+        </div>
+      </div>
+      <button class="reply-cancel" onclick="clearReplyMode(${friendId})" title="Cancel reply">×</button>
+    `;
+    replyIndicator.style.display = 'flex';
+  } else {
+    replyIndicator.style.display = 'none';
+  }
+}
+
 function handleChatKeyPress(event, friendId) {
   if (event.key === 'Enter') {
     sendChatMessage(friendId);
-  } else if (event.key === 'Escape' && isEditMode) {
+  } else if (event.key === 'Escape') {
     const inputEl = document.getElementById(`chat-input-${friendId}`);
-    exitEditMode(inputEl);
+    if (isEditMode) {
+      exitEditMode(inputEl);
+    } else if (isReplyMode && replyFriendId === friendId) {
+      clearReplyMode(friendId);
+    }
   }
 }
 
@@ -1679,6 +2057,62 @@ document.addEventListener('visibilitychange', () => {
     });
   }
 });
+
+// Responsive enhancements
+let currentOrientation = window.orientation || (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+
+// Handle orientation changes for better mobile experience
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    currentOrientation = window.orientation || (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+
+    // Update any active reply indicators after orientation change
+    if (isReplyMode) {
+      const replyIndicator = document.getElementById(`reply-indicator-${replyFriendId}`);
+      if (replyIndicator) {
+        updateReplyIndicator(replyFriendId);
+      }
+    }
+
+    // Re-adjust chat window sizes if needed
+    const chatWindows = document.querySelectorAll('.chat-window');
+    chatWindows.forEach(window => {
+      if (window.style.display !== 'none') {
+        // Force reflow for proper responsive adjustments
+        window.style.display = 'none';
+        setTimeout(() => {
+          window.style.display = 'flex';
+        }, 10);
+      }
+    });
+  }, 300); // Wait for orientation change to complete
+});
+
+// Handle window resize for responsive adjustments
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    // Update tooltips based on screen size
+    const messages = document.querySelectorAll('.chat-message');
+    messages.forEach(message => {
+      message.title = window.innerWidth > 768 ?
+        'Double-click to reply • Right-click for options' :
+        'Swipe to reply • Long-press for options';
+    });
+
+    // Adjust any active reply indicators
+    if (isReplyMode) {
+      const replyIndicator = document.getElementById(`reply-indicator-${replyFriendId}`);
+      if (replyIndicator) {
+        updateReplyIndicator(replyFriendId);
+      }
+    }
+  }, 250);
+});
+
+// Touch device detection for better UX
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 // Initialize view based on token
 async function initializeApp() {
