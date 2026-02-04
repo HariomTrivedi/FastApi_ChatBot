@@ -1,0 +1,4 @@
+{mobile_device_id: BE2A.250530.026.D1, sensor_type: live, timestamp: 2026-01-27T13:19:31.616735, data: {mgga: {}, wasp: {}, anemometer: {}}}
+
+#START_TIME=2026-01-27T13:19:31.616703
+#END_TIME=2026-01-27T13:19:32.692753

@@ -1,0 +1,6 @@
+mobile_device_id,session_label,campaign,gps_data,file_content,started_at,ended_at
+BE2A.250530.026.D1,test,,"(latitude: 37.4219983, longitude: -122.084, time: 2026-01-27T07:27:05.542309Z)
+(latitude: 37.4219983, longitude: -122.084, time: 2026-01-27T07:27:06.536782Z)
+(latitude: 37.4219983, longitude: -122.084, time: 2026-01-27T07:27:07.538071Z)
+(latitude: 37.4219983, longitude: -122.084, time: 2026-01-27T07:27:08.537718Z)
+(latitude: 37.4219983, longitude: -122.084, time: 2026-01-27T07:27:09.537111Z)",(deviceId: BE2A.250530.026.D1 | sensor: live | time: 2026-01-27T12:57:04.467169),2026-01-27T12:57:04.461093+05:30,2026-01-27T12:57:09.889235+05:30
