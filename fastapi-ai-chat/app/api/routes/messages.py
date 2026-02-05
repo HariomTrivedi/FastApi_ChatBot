@@ -126,11 +126,13 @@ async def send_message(
 @router.get("/conversation/{friend_id}", response_model=List[ChatMessageResponse])
 async def get_conversation(
     friend_id: int,
+    limit: int = 50,
+    offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     ws_manager: WebSocketManager = Depends(lambda: WebSocketManager.instance())
 ):
-    """Get chat history with a specific friend"""
+    """Get chat history with a specific friend (paginated)"""
 
     # Check if they are friends
     from app.db.models import FriendRequest, FriendRequestStatus
@@ -155,7 +157,7 @@ async def get_conversation(
     ).filter(
         ((ChatMessage.sender_id == current_user.id) & (ChatMessage.receiver_id == friend_id)) |
         ((ChatMessage.sender_id == friend_id) & (ChatMessage.receiver_id == current_user.id))
-    ).order_by(ChatMessage.created_at.asc()).all()
+    ).order_by(ChatMessage.created_at.desc()).offset(offset).limit(limit).all()
 
     # Note: Messages are no longer automatically marked as read when loading conversation
     # They will be marked as read only when the chat window is actually opened and viewed
@@ -164,7 +166,7 @@ async def get_conversation(
 
     # Format response with sender and receiver info
     result = []
-    for message in messages:
+    for message in reversed(messages):
         result.append(ChatMessageResponse(
             id=message.id,
             sender_id=message.sender_id,

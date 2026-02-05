@@ -3,7 +3,6 @@
 // const inputEl = document.getElementById("input");
 // const sendBtn = document.getElementById("send");
 const statusEl = document.getElementById("status");
-const currentUserNameEl = document.getElementById("currentUserName");
 const logoutBtn = document.getElementById("logoutBtn");
 const chatCard = document.getElementById("chatCard");
 const dashboardCard = document.getElementById("dashboardCard");
@@ -26,9 +25,6 @@ const registerBtn = document.getElementById("registerBtn");
 const loginEmail = document.getElementById("loginEmail");
 const loginPassword = document.getElementById("loginPassword");
 const loginBtn = document.getElementById("loginBtn");
-const refreshUsersBtn = document.getElementById("refreshUsersBtn");
-const refreshFriendsBtn = document.getElementById("refreshFriendsBtn");
-const checkRequestsBtn = document.getElementById("checkRequestsBtn");
 
 const TOKEN_KEY = "access_token";
 const RECENT_CHATS_KEY = "recent_chats_v1";
@@ -136,11 +132,6 @@ async function fetchActiveUsers() {
 
     const currentUser = await currentUserResp.json();
     currentUserId = currentUser.id;
-    if (currentUserNameEl) {
-      const displayName = currentUser.full_name || currentUser.username || currentUser.email || "User";
-      currentUserNameEl.textContent = displayName;
-      currentUserNameEl.title = currentUser.email || displayName;
-    }
 
     // Get all active users
     const usersResp = await fetch("/auth/users/active", {
@@ -245,34 +236,6 @@ async function fetchFriendRequests() {
   }
 }
 
-async function runActionWithButton(buttonEl, busyLabel, action) {
-  if (!buttonEl) {
-    await action();
-    return;
-  }
-  const originalText = buttonEl.textContent;
-  buttonEl.disabled = true;
-  buttonEl.textContent = busyLabel;
-  try {
-    await action();
-  } finally {
-    buttonEl.textContent = originalText;
-    buttonEl.disabled = false;
-  }
-}
-
-async function refreshUsersAction() {
-  await runActionWithButton(refreshUsersBtn, "Refreshing...", fetchActiveUsers);
-}
-
-async function refreshFriendsAction() {
-  await runActionWithButton(refreshFriendsBtn, "Refreshing...", fetchFriends);
-}
-
-async function checkRequestsAction() {
-  await runActionWithButton(checkRequestsBtn, "Checking...", fetchFriendRequests);
-}
-
 function displayFriends(friends) {
   if (!friends || friends.length === 0) {
     friendsList.innerHTML = '<div class="user-item">No friends yet</div>';
@@ -299,7 +262,7 @@ function displayFriends(friends) {
         <div class="user-email">${friendUser.email}</div>
       </div>
       <div style="display: flex; gap: 4px;">
-        <button class="request-btn" onclick="startChat(${friendUser.id})" style="background: #D47E30;">Chat</button>
+        <button class="request-btn" onclick="startChat(${friendUser.id})" style="background: #2196f3;">Chat</button>
         <button class="request-btn cancel" onclick="removeFriend(${friendUser.id})">Remove</button>
       </div>
     </div>
@@ -387,7 +350,7 @@ function displayUsers(users, sentRequests = [], friends = []) {
       buttonClass = 'request-btn';
       buttonText = 'Friends';
       buttonAction = `startChat(${user.id})`;
-      buttonHtml = `<button class="${buttonClass}" onclick="${buttonAction}" style="background: #D47E30;">${buttonText}</button>`;
+      buttonHtml = `<button class="${buttonClass}" onclick="${buttonAction}" style="background: #2196f3;">${buttonText}</button>`;
     }
     // Check if request already sent
     else if (sentRequestMap.has(user.id)) {

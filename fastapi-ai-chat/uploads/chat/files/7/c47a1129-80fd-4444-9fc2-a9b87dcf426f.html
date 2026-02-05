@@ -7,11 +7,11 @@
     <style>
       :root {
         color-scheme: light;
-        --primary-gradient: linear-gradient(135deg, #D47E30 0%, #6F4E37 100%);
-        --secondary-gradient: linear-gradient(135deg, #F5F5DC 0%, #F5F5DC 100%);
-        --success-gradient: linear-gradient(135deg, #F5F5DC 0%, #F5F5DC 100%);
-        --warning-gradient: linear-gradient(135deg, #D47E30 0%, #6F4E37 100%);
-        --danger-gradient: linear-gradient(135deg, #6F4E37 0%, #D47E30 100%);
+        --primary-gradient: linear-gradient(135deg, #2dd4bf 0%, #0ea5e9 100%);
+        --secondary-gradient: linear-gradient(135deg, #f97316 0%, #fb7185 100%);
+        --success-gradient: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+        --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+        --danger-gradient: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
         --card-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
         --card-shadow-hover: 0 20px 60px rgba(15, 23, 42, 0.18);
         --border-radius: 16px;
@@ -27,18 +27,13 @@
         box-sizing: border-box;
       }
 
-      html, body {
-        width: 100%;
-        overflow-x: hidden;
-      }
-
       body {
         font-family: "Sora", "Poppins", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         margin: 0;
         padding: 0;
         background:
-          radial-gradient(1000px 600px at 10% -10%, rgba(212, 126, 48, 0.18), transparent 60%),
-          radial-gradient(900px 500px at 110% 10%, rgba(111, 78, 55, 0.16), transparent 60%),
+          radial-gradient(1000px 600px at 10% -10%, rgba(14, 165, 233, 0.18), transparent 60%),
+          radial-gradient(900px 500px at 110% 10%, rgba(45, 212, 191, 0.16), transparent 60%),
           linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         min-height: 100vh;
         line-height: 1.6;
@@ -67,7 +62,6 @@
         display: flex;
         gap: 32px;
         margin-top: 32px;
-        align-items: stretch;
       }
 
       #sidebar {
@@ -196,12 +190,12 @@
 
       .request-btn.pending {
         background: var(--warning-gradient);
-        color: #000000;
+        color: #fff;
       }
 
       .request-btn.send {
         background: var(--success-gradient);
-        color: #000000;
+        color: #fff;
       }
 
       .request-btn.accept {
@@ -585,32 +579,6 @@
         }
       }
 
-      @media (max-width: 640px) {
-        .dashboard-header {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 12px;
-        }
-
-        .dashboard-actions {
-          width: 100%;
-          flex-wrap: wrap;
-          gap: 8px;
-          justify-content: flex-start;
-        }
-
-        .user-pill,
-        #status.status-pill,
-        .logout-btn {
-          width: 100%;
-          justify-content: center;
-        }
-
-        .dashboard-title h3 {
-          font-size: 1.6rem;
-        }
-      }
-
       @media (max-width: 480px) {
         #container {
           padding: 8px;
@@ -633,15 +601,11 @@
         }
 
         .chat-window {
-          width: 100vw;
-          height: 100dvh;
-          max-width: 100vw;
-          max-height: 100dvh;
-          bottom: 0;
-          right: 0;
-          left: 0;
-          top: 0;
-          border-radius: 0;
+          width: 98vw;
+          height: 90vh;
+          bottom: 5px;
+          right: 5px;
+          left: 5px;
         }
 
         h2 {
@@ -653,47 +617,8 @@
         }
       }
 
-      @media (max-width: 480px) {
-        .chat-header {
-          padding: 14px 16px;
-        }
-
-        .chat-input-area {
-          flex-wrap: wrap;
-          gap: 10px;
-          padding: 14px;
-        }
-
-        .chat-upload-buttons {
-          order: 1;
-        }
-
-        .emoji-btn {
-          order: 2;
-        }
-
-        .chat-input {
-          order: 3;
-          width: 100%;
-          flex-basis: 100%;
-        }
-
-        .chat-send {
-          order: 4;
-          width: 100%;
-          justify-content: center;
-        }
-      }
-
-      @media (max-width: 480px) {
-        #usersList,
-        .friends-list-scroll {
-          max-height: 220px;
-        }
-      }
-
       .chat-header {
-        background: linear-gradient(135deg, #D47E30 0%, #6F4E37 100%);
+        background: linear-gradient(135deg, #0ea5e9 0%, #2dd4bf 100%);
         color: #fff;
         padding: 20px 24px;
         border-radius: var(--border-radius) var(--border-radius) 0 0;
@@ -800,8 +725,8 @@
         overflow-y: auto;
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         background-image:
-          radial-gradient(circle at 30px 100px, rgba(212, 126, 48, 0.08) 0%, transparent 50%),
-          radial-gradient(circle at 100px 30px, rgba(111, 78, 55, 0.08) 0%, transparent 50%);
+          radial-gradient(circle at 30px 100px, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
+          radial-gradient(circle at 100px 30px, rgba(45, 212, 191, 0.08) 0%, transparent 50%);
         background-attachment: fixed;
         scroll-behavior: smooth;
         border-radius: var(--border-radius) var(--border-radius) 0 0;
@@ -881,11 +806,11 @@
       }
 
       .chat-message.sent {
-        background: linear-gradient(135deg, #D47E30 0%, #6F4E37 100%);
+        background: linear-gradient(135deg, #0ea5e9 0%, #2dd4bf 100%);
         color: #fff;
         margin-left: auto;
         border-bottom-right-radius: 4px;
-        box-shadow: 0 2px 10px rgba(212, 126, 48, 0.3);
+        box-shadow: 0 2px 10px rgba(14, 165, 233, 0.3);
       }
 
       .chat-message.received {
@@ -939,10 +864,10 @@
       }
 
       .chat-upload-btn:hover {
-        border-color: #D47E30;
+        border-color: #0ea5e9;
         background: #f8f9ff;
         transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(212, 126, 48, 0.2);
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
       }
 
       .chat-upload-btn:active {
@@ -960,11 +885,11 @@
       .chat-upload-btn svg {
         width: 20px;
         height: 20px;
-        fill: #D47E30;
+        fill: #0ea5e9;
       }
 
       .chat-upload-btn:hover svg {
-        fill: #6F4E37;
+        fill: #2dd4bf;
       }
 
       /* Emoji picker styling */
@@ -1029,9 +954,9 @@
       }
 
       .chat-input:focus {
-        border-color: #D47E30;
+        border-color: #0ea5e9;
         background: #fff;
-        box-shadow: 0 0 0 3px rgba(212, 126, 48, 0.15), 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15), 0 4px 12px rgba(0,0,0,0.08);
         transform: translateY(-1px);
       }
 
@@ -1042,7 +967,7 @@
 
       .chat-send {
         padding: 16px 32px;
-        background: linear-gradient(135deg, #D47E30 0%, #6F4E37 100%);
+        background: linear-gradient(135deg, #0ea5e9 0%, #2dd4bf 100%);
         color: #fff;
         border: none;
         border-radius: 28px;
@@ -1050,7 +975,7 @@
         font-weight: 600;
         font-size: 1rem;
         transition: var(--transition);
-        box-shadow: 0 6px 16px rgba(212, 126, 48, 0.3);
+        box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
         min-width: 100px;
         backdrop-filter: blur(10px);
       }
@@ -1936,7 +1861,7 @@
       }
 
       .vc-btn:hover { transform: translateY(-2px); background: rgba(255,255,255,0.18); }
-      .vc-btn.active { background: rgba(245, 245, 220, 0.85); }
+      .vc-btn.active { background: rgba(34, 197, 94, 0.85); }
       .vc-btn.end { background: #e11d48; }
       .vc-btn.end:hover { background: #f43f5e; }
 
@@ -1980,232 +1905,23 @@
 
       /* Dashboard styles */
       .dashboard-content { margin-top: 20px; }
-      #dashboardCard {
-        background:
-          radial-gradient(500px 280px at 8% 6%, rgba(212, 126, 48,0.18), transparent 70%),
-          radial-gradient(480px 260px at 92% 12%, rgba(111, 78, 55,0.18), transparent 70%),
-          linear-gradient(145deg, rgba(255,255,255,0.86) 0%, rgba(241,245,249,0.72) 100%);
-        border: 1px solid rgba(255,255,255,0.45);
-        box-shadow:
-          0 30px 80px rgba(15, 23, 42, 0.22),
-          inset 0 1px 0 rgba(255,255,255,0.65);
-        position: relative;
-        overflow: hidden;
-        backdrop-filter: blur(16px) saturate(140%);
-      }
-
-      #dashboardCard::before {
-        content: "";
-        position: absolute;
-        top: -120px;
-        right: -120px;
-        width: 280px;
-        height: 280px;
-        background: radial-gradient(circle, rgba(212, 126, 48,0.18), transparent 65%);
-        pointer-events: none;
-      }
-
-      #dashboardCard::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          linear-gradient(120deg, rgba(255,255,255,0.3), transparent 40%),
-          linear-gradient(300deg, rgba(255,255,255,0.18), transparent 45%);
-        opacity: 0.7;
-        pointer-events: none;
-      }
-
-      .dashboard-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 18px;
-        border-radius: 18px;
-        background: linear-gradient(135deg, rgba(255,255,255,0.88), rgba(241,245,249,0.65));
-        border: 1px solid rgba(255,255,255,0.55);
-        box-shadow:
-          0 18px 40px rgba(15, 23, 42, 0.12),
-          inset 0 1px 0 rgba(255,255,255,0.7);
-        margin-bottom: 20px;
-        backdrop-filter: blur(14px) saturate(140%);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .dashboard-header::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          linear-gradient(110deg, rgba(255,255,255,0.35), transparent 45%),
-          linear-gradient(300deg, rgba(255,255,255,0.2), transparent 40%);
-        pointer-events: none;
-      }
-
-      .dashboard-title h3 {
-        margin: 0;
-        font-size: 1.9rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        color: var(--ink-900);
-      }
-
-      .dashboard-subtitle {
-        margin: 4px 0 0 0;
-        font-size: 0.92rem;
-        color: var(--ink-500);
-      }
-
-      .dashboard-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
-        border-radius: 999px;
-        background: rgba(212, 126, 48,0.12);
-        color: #0f172a;
-        font-size: 0.74rem;
-        font-weight: 700;
-        margin-left: 10px;
-        border: 1px solid rgba(212, 126, 48,0.25);
-        box-shadow: 0 6px 16px rgba(212, 126, 48,0.18);
-      }
-
-      .dashboard-badge::before {
-        content: "";
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #F5F5DC;
-        box-shadow: 0 0 0 3px rgba(245, 245, 220,0.18);
-      }
-
-      .dashboard-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .user-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 14px;
-        border-radius: 999px;
-        background: rgba(212, 126, 48,0.14);
-        color: var(--ink-900);
-        font-size: 0.86rem;
-        font-weight: 600;
-        border: 1px solid rgba(212, 126, 48,0.28);
-        box-shadow: 0 8px 18px rgba(212, 126, 48,0.18);
-      }
-
-      .user-pill::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #D47E30;
-        box-shadow: 0 0 0 3px rgba(212, 126, 48,0.2);
-      }
-
-      #status.status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 14px;
-        border-radius: 999px;
-        background: rgba(212, 126, 48,0.14);
-        color: var(--ink-900);
-        font-size: 0.86rem;
-        font-weight: 600;
-        border: 1px solid rgba(212, 126, 48,0.28);
-        box-shadow: 0 8px 18px rgba(212, 126, 48,0.18);
-      }
-
-      #status.status-pill::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #F5F5DC;
-        box-shadow: 0 0 0 3px rgba(245, 245, 220,0.2);
-      }
-
-      .hidden {
-        display: none !important;
-      }
-
-      .logout-btn {
-        padding: 10px 18px;
-        background: linear-gradient(135deg, #6F4E37 0%, #D47E30 100%);
-        color: #fff;
-        border: none;
-        border-radius: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        box-shadow: 0 10px 24px rgba(239,68,68,0.28);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .logout-btn::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(120deg, rgba(255,255,255,0.2), transparent 45%);
-        opacity: 0.7;
-        pointer-events: none;
-      }
-
-      .logout-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 12px 26px rgba(239,68,68,0.35);
-      }
-
       .dashboard-stats {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 22px;
+        gap: 20px;
         margin-bottom: 32px;
       }
 
       .stat-card {
-        background: linear-gradient(160deg, rgba(255,255,255,0.82) 0%, rgba(241,245,249,0.7) 100%);
-        border: 1px solid rgba(255,255,255,0.45);
+        background: linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(241,245,249,0.9) 100%);
+        border: 1px solid rgba(255,255,255,0.7);
         border-radius: var(--border-radius);
-        padding: 26px;
-        box-shadow:
-          0 20px 44px rgba(15, 23, 42, 0.14),
-          inset 0 1px 0 rgba(255,255,255,0.65);
+        padding: 24px;
+        box-shadow: var(--card-shadow);
         transition: var(--transition);
-        backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(5px);
         position: relative;
         overflow: hidden;
-      }
-
-      .stat-card::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 0;
-        right: 0;
-        height: 4px;
-        background: var(--primary-gradient);
-        opacity: 0.9;
-      }
-
-      .stat-card::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(320px 120px at 20% 0%, rgba(212, 126, 48,0.12), transparent 70%);
-        pointer-events: none;
-      }
-
-      .stat-card.actions-card::before {
-        background: linear-gradient(135deg, #F5F5DC 0%, #D47E30 100%);
       }
 
       .stat-card:hover {
@@ -2236,7 +1952,7 @@
 
       .action-btn {
         padding: 10px 18px;
-        background: linear-gradient(135deg, #D47E30 0%, #F5F5DC 100%);
+        background: linear-gradient(135deg, #0ea5e9 0%, #2dd4bf 100%);
         color: #fff;
         border: none;
         border-radius: 999px;
@@ -2244,23 +1960,20 @@
         font-size: 0.9rem;
         font-weight: 600;
         transition: var(--transition);
-        box-shadow: 0 10px 24px rgba(212, 126, 48, 0.28);
+        box-shadow: 0 8px 20px rgba(14, 165, 233, 0.25);
       }
 
       .action-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 24px rgba(212, 126, 48, 0.35);
+        box-shadow: 0 10px 24px rgba(14, 165, 233, 0.35);
       }
 
       .dashboard-info {
-        background: linear-gradient(135deg, rgba(212, 126, 48, 0.16) 0%, rgba(111, 78, 55, 0.14) 100%);
-        border: 1px solid rgba(255,255,255,0.45);
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(45, 212, 191, 0.12) 100%);
+        border: 1px solid rgba(14, 165, 233, 0.18);
         border-radius: var(--border-radius);
         padding: 24px;
-        box-shadow:
-          0 18px 40px rgba(15, 23, 42, 0.12),
-          inset 0 1px 0 rgba(255,255,255,0.65);
-        backdrop-filter: blur(14px) saturate(140%);
+        box-shadow: var(--card-shadow);
       }
 
       .dashboard-info h4 {
@@ -2272,28 +1985,13 @@
 
       .dashboard-info ul {
         margin: 16px 0 0 0;
-        padding-left: 0;
-        list-style: none;
+        padding-left: 20px;
       }
 
       .dashboard-info li {
         margin-bottom: 10px;
         line-height: 1.6;
         color: var(--ink-700);
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-      }
-
-      .dashboard-info li::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        margin-top: 8px;
-        border-radius: 50%;
-        background: #D47E30;
-        box-shadow: 0 0 0 3px rgba(212, 126, 48,0.15);
-        flex-shrink: 0;
       }
 
       .dashboard-info li strong {
@@ -2369,15 +2067,11 @@
       </div>
 
       <div class="card" id="dashboardCard" style="display:none;">
-        <div class="dashboard-header">
-          <div class="dashboard-title">
-            <h3>Dashboard</h3>
-            <p class="dashboard-subtitle">Your activity hub for chats and connections</p>
-          </div>
-          <div class="dashboard-actions">
-            <span id="currentUserName" class="user-pill">User</span>
-            <span id="status" class="status-pill hidden"></span>
-            <button id="logoutBtn" class="logout-btn">Logout</button>
+        <div class="row" style="align-items:center; justify-content:space-between;">
+          <h3 style="margin:0;">Dashboard</h3>
+          <div>
+            <span id="status"></span>
+            <button id="logoutBtn" style="margin-left:10px; background:#b71c1c;">Logout</button>
           </div>
         </div>
 
@@ -2387,12 +2081,12 @@
               <h4>Welcome back!</h4>
               <p>You are now logged into your dashboard. Use the sidebar to manage your friends and start chatting.</p>
             </div>
-            <div class="stat-card actions-card">
-              <h4>Command Center</h4>
+            <div class="stat-card">
+              <h4>Quick Actions</h4>
               <div class="action-buttons">
-                <button id="refreshUsersBtn" onclick="refreshUsersAction()" class="action-btn">Refresh Users</button>
-                <button id="refreshFriendsBtn" onclick="refreshFriendsAction()" class="action-btn">Refresh Friends</button>
-                <button id="checkRequestsBtn" onclick="checkRequestsAction()" class="action-btn">Check Requests</button>
+                <button onclick="fetchActiveUsers()" class="action-btn">Refresh Users</button>
+                <button onclick="fetchFriends()" class="action-btn">Refresh Friends</button>
+                <button onclick="fetchFriendRequests()" class="action-btn">Check Requests</button>
               </div>
             </div>
           </div>

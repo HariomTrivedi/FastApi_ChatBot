@@ -21,7 +21,8 @@ ALLOWED_FILE_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".txt", ".csv", ".xls", ".xlsx",
     ".ppt", ".pptx", ".zip", ".rar", ".7z", ".tar", ".gz",
     ".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".webm", ".m4v", ".mpg", ".mpeg",
-    ".mp3", ".wav", ".aac", ".flac", ".m4a", ".wma", ".ogg"
+    ".mp3", ".wav", ".aac", ".flac", ".m4a", ".wma", ".ogg",
+    ".html", ".htm", ".css", ".js", ".json"
 }
 
 # Maximum file sizes (in bytes)
@@ -139,4 +140,3 @@ def extract_pdf_text(path: Union[str, Path]) -> str:
     for page in reader.pages:
         text_parts.append(page.extract_text() or "")
     return "\n".join(text_parts)
-
