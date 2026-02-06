@@ -73,7 +73,7 @@
         <div id="loginStatus"></div>
       </div>
 
-      <div class="card is-hidden" id="dashboardCard">
+      <div class="card" id="dashboardCard" style="display:none;">
         <div class="dashboard-header">
           <div class="dashboard-title">
             <h3>Dashboard</h3>
@@ -127,8 +127,8 @@
     <!-- Incoming call modal -->
     <div id="incoming-call" class="incoming-call">
       <div class="incoming-card">
-        <h3 id="incoming-title" class="incoming-title">Incoming call</h3>
-        <p id="incoming-subtitle" class="incoming-subtitle">Someone is calling you</p>
+        <h3 id="incoming-title" style="margin: 0 0 8px 0;">Incoming call</h3>
+        <p id="incoming-subtitle" style="margin: 0; color: #475569;">Someone is calling you</p>
         <div class="incoming-actions">
           <button id="incoming-accept" class="incoming-btn incoming-accept">Accept</button>
           <button id="incoming-decline" class="incoming-btn incoming-decline">Decline</button>
@@ -298,8 +298,8 @@
                   0 12px 30px rgba(0,0,0,0.1),
                   0 0 0 1px rgba(255,255,255,0.05),
                   0 0 20px rgba(102, 126, 234, 0.08);
-                max-width: min(380px, 92vw);
-                max-height: min(450px, 70vh);
+                max-width: 380px;
+                max-height: 450px;
                 overflow: hidden;
                 backdrop-filter: blur(24px);
                 animation: emojiPickerSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -362,7 +362,7 @@
               }
 
               .category-tabs::-webkit-scrollbar-thumb {
-                background: linear-gradient(135deg, #A87C7C 0%, #3E3232 100%);
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 border-radius: 2px;
                 opacity: 0.6;
               }
@@ -384,7 +384,7 @@
                 white-space: nowrap;
                 backdrop-filter: blur(10px);
                 box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-                color: #503C3C;
+                color: #4a5568;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 position: relative;
@@ -407,7 +407,7 @@
                 border-color: rgba(102, 126, 234, 0.3);
                 transform: translateY(-2px);
                 box-shadow: 0 6px 16px rgba(102, 126, 234, 0.15);
-                color: #A87C7C;
+                color: #667eea;
               }
 
               .category-tab:hover::before {
@@ -431,10 +431,9 @@
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
                 gap: 8px;
-                padding: 16px 16px 20px;
+                padding: 20px 16px;
                 overflow-y: auto;
-                overflow-x: hidden;
-                max-height: calc(100% - 86px);
+                max-height: 320px;
                 scrollbar-width: thin;
                 scrollbar-color: rgba(102, 126, 234, 0.4) transparent;
                 background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(248,250,252,0.3) 100%);
@@ -452,7 +451,7 @@
               }
 
               .emoji-grid::-webkit-scrollbar-thumb {
-                background: linear-gradient(135deg, #A87C7C 0%, #3E3232 100%);
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 border-radius: 4px;
                 opacity: 0.7;
               }
@@ -529,8 +528,8 @@
               /* Enhanced Responsive Design */
               @media (max-width: 1024px) {
                 :host {
-                  max-width: min(360px, 92vw);
-                  max-height: min(440px, 68vh);
+                  max-width: 380px;
+                  max-height: 450px;
                 }
 
                 .emoji-grid {
@@ -551,7 +550,7 @@
               @media (max-width: 768px) {
                 :host {
                   max-width: calc(100vw - 20px);
-                  max-height: min(60vh, 460px);
+                  max-height: 60vh;
                   border-radius: 20px;
                   box-shadow: 0 30px 80px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.3);
                 }
@@ -571,8 +570,8 @@
                 .emoji-grid {
                   grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));
                   gap: 6px;
-                  padding: 14px 12px 18px;
-                  max-height: calc(100% - 80px);
+                  padding: 16px 12px;
+                  max-height: calc(100vh - 280px);
                   overflow-y: auto;
                 }
 
@@ -608,8 +607,8 @@
 
               @media (max-width: 480px) {
                 :host {
-                  max-width: calc(100vw - 16px);
-                  max-height: calc(100vh - 80px);
+                  max-width: calc(100vw - 20px);
+                  max-height: calc(100vh - 60px);
                   border-radius: 16px;
                 }
 
@@ -629,8 +628,8 @@
                 .emoji-grid {
                   grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
                   gap: 4px;
-                  padding: 12px 10px 16px;
-                  max-height: calc(100% - 72px);
+                  padding: 14px 10px;
+                  max-height: calc(100vh - 240px);
                 }
 
                 .emoji-btn {
@@ -649,8 +648,8 @@
 
               @media (max-width: 360px) {
                 :host {
-                  max-width: calc(100vw - 12px);
-                  max-height: calc(100vh - 60px);
+                  max-width: calc(100vw - 16px);
+                  max-height: calc(100vh - 40px);
                   border-radius: 12px;
                 }
 
@@ -670,8 +669,8 @@
                 .emoji-grid {
                   grid-template-columns: repeat(auto-fit, minmax(32px, 1fr));
                   gap: 3px;
-                  padding: 10px 8px 14px;
-                  max-height: calc(100% - 68px);
+                  padding: 12px 8px;
+                  max-height: calc(100vh - 200px);
                 }
 
                 .emoji-btn {
@@ -748,22 +747,22 @@
               /* Dark mode support */
               @media (prefers-color-scheme: dark) {
                 :host {
-                  background: linear-gradient(135deg, #3E3232 0%, #503C3C 100%);
+                  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
                   border-color: rgba(255,255,255,0.1);
                 }
 
 
                 .category-tabs {
-                  background: linear-gradient(135deg, #3E3232 0%, #503C3C 100%);
+                  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
                 }
 
                 .category-tab {
                   background: rgba(255,255,255,0.1);
-                  color: #f3e7e7;
+                  color: #e2e8f0;
                 }
 
                 .category-tab.active {
-                  background: linear-gradient(135deg, #A87C7C 0%, #3E3232 100%);
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 }
 
                 .emoji-btn {
@@ -773,7 +772,7 @@
 
                 .no-results {
                   background: rgba(255,255,255,0.1);
-                  color: #7E6363;
+                  color: #a0aec0;
                 }
               }
             </style>
@@ -834,11 +833,11 @@
     </script>
 
     <!-- Context menu for message actions -->
-    <div id="message-context-menu" class="message-context-menu">
-      <div id="context-menu-reply" class="context-menu-item">Reply</div>
-      <div id="context-menu-copy" class="context-menu-item">Copy Message</div>
-      <div id="context-menu-edit" class="context-menu-item">Edit Message</div>
-      <div id="context-menu-delete" class="context-menu-item danger">Delete Message</div>
+    <div id="message-context-menu" style="display: none; position: fixed; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 150px;">
+      <div id="context-menu-reply" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee;">Reply</div>
+      <div id="context-menu-copy" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee;">Copy Message</div>
+      <div id="context-menu-edit" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee; display: block;">Edit Message</div>
+      <div id="context-menu-delete" style="padding: 12px 16px; cursor: pointer; color: #dc3545;">Delete Message</div>
     </div>
 
     <!-- Footer -->
@@ -852,10 +851,75 @@
         <h1>✨ Made For J ✨</h1>
         <p>This amazing chat application was created with dedication and passion.</p>
         <p>Thank you for being part of this journey! ❤️</p>
-        <button class="modal-close" id="madeForJClose">Close</button>
+        <button class="modal-close" onclick="closeMadeForJModal()">Close</button>
       </div>
     </div>
 
     <script src="/app.js"></script>
+    <script>
+      // Long press detection for footer
+      const footer = document.getElementById('footer');
+      const modal = document.getElementById('madeForJModal');
+      let pressTimer = null;
+
+      footer.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+          openMadeForJModal();
+        }, 600); // 600ms long press
+      });
+
+      footer.addEventListener('touchend', () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+      });
+
+      footer.addEventListener('touchmove', () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+      });
+
+      // Desktop long press with mouse
+      let mouseDownTime = 0;
+      footer.addEventListener('mousedown', () => {
+        mouseDownTime = Date.now();
+      });
+
+      footer.addEventListener('mouseup', () => {
+        const pressDuration = Date.now() - mouseDownTime;
+        if (pressDuration > 600) {
+          openMadeForJModal();
+        }
+      });
+
+      footer.addEventListener('mouseleave', () => {
+        mouseDownTime = 0;
+      });
+
+      function openMadeForJModal() {
+        modal.classList.add('show');
+      }
+
+      function closeMadeForJModal() {
+        modal.classList.remove('show');
+      }
+
+      // Close modal when clicking outside
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeMadeForJModal();
+        }
+      });
+
+      // Close modal with ESC key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeMadeForJModal();
+        }
+      });
+    </script>
   </body>
 </html>

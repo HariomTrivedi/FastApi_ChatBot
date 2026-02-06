@@ -1,0 +1,76 @@
+AJE TO KOK KAIK EXTRA J CHAMKE CHE :)
+
+blue:
+
+:root {
+  color-scheme: light;
+
+  /* =====================
+     GRADIENTS
+  ====================== */
+  --primary-gradient: linear-gradient(135deg, #5F9598 0%, #061E29 100%);
+  --secondary-gradient: linear-gradient(135deg, #1D546D 0%, #061E29 100%);
+  --success-gradient: linear-gradient(135deg, #F3F4F4 0%, #F3F4F4 100%);
+  --warning-gradient: linear-gradient(135deg, #5F9598 0%, #1D546D 100%);
+  --danger-gradient: linear-gradient(135deg, #061E29 0%, #1D546D 100%);
+
+  /* =====================
+     SHADOWS & UI
+  ====================== */
+  --card-shadow: 0 14px 40px rgba(6, 30, 41, 0.25);
+  --card-shadow-hover: 0 20px 60px rgba(6, 30, 41, 0.35);
+
+  --border-radius: 16px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* =====================
+     TEXT COLORS
+  ====================== */
+  --ink-900: #061E29;   /* primary text */
+  --ink-700: #1D546D;   /* secondary text */
+  --ink-500: #5F9598;   /* muted / placeholder */
+
+  /* =====================
+     BACKGROUNDS
+  ====================== */
+  --paper: #F3F4F4;     /* main background */
+  --glass: rgba(243, 244, 244, 0.75);
+}
+
+
+pink:
+
+:root {
+  color-scheme: light;
+
+  /* =====================
+     GRADIENTS
+  ====================== */
+  --primary-gradient: linear-gradient(135deg, #A87C7C 0%, #3E3232 100%);
+  --secondary-gradient: linear-gradient(135deg, #7E6363 0%, #503C3C 100%);
+  --success-gradient: linear-gradient(135deg, #A87C7C 0%, #A87C7C 100%);
+  --warning-gradient: linear-gradient(135deg, #7E6363 0%, #3E3232 100%);
+  --danger-gradient: linear-gradient(135deg, #3E3232 0%, #503C3C 100%);
+
+  /* =====================
+     SHADOWS & UI
+  ====================== */
+  --card-shadow: 0 14px 40px rgba(62, 50, 50, 0.35);
+  --card-shadow-hover: 0 20px 60px rgba(62, 50, 50, 0.45);
+
+  --border-radius: 16px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* =====================
+     TEXT COLORS
+  ====================== */
+  --ink-900: #3E3232;   /* headings / strong text */
+  --ink-700: #503C3C;   /* body text */
+  --ink-500: #7E6363;   /* muted / placeholder */
+
+  /* =====================
+     BACKGROUNDS
+  ====================== */
+  --paper: #A87C7C;     /* app background */
+  --glass: rgba(168, 124, 124, 0.75);
+}

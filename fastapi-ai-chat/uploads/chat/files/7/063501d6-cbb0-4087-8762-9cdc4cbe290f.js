@@ -298,8 +298,8 @@ function displayFriends(friends) {
         <div class="user-name">${friendUser.username}</div>
         <div class="user-email">${friendUser.email}</div>
       </div>
-      <div class="user-actions">
-        <button class="request-btn chat-primary" onclick="startChat(${friendUser.id})">Chat</button>
+      <div style="display: flex; gap: 4px;">
+        <button class="request-btn" onclick="startChat(${friendUser.id})" style="background: #D47E30;">Chat</button>
         <button class="request-btn cancel" onclick="removeFriend(${friendUser.id})">Remove</button>
       </div>
     </div>
@@ -387,7 +387,7 @@ function displayUsers(users, sentRequests = [], friends = []) {
       buttonClass = 'request-btn';
       buttonText = 'Friends';
       buttonAction = `startChat(${user.id})`;
-      buttonHtml = `<button class="${buttonClass} chat-primary" onclick="${buttonAction}">${buttonText}</button>`;
+      buttonHtml = `<button class="${buttonClass}" onclick="${buttonAction}" style="background: #D47E30;">${buttonText}</button>`;
     }
     // Check if request already sent
     else if (sentRequestMap.has(user.id)) {
@@ -1501,7 +1501,7 @@ function addMessageToChat(friendId, message) {
     ${replyHtml}
     ${contentHtml}
     <div class="message-footer">
-      <span class="message-time">${timestamp}</span>
+      <span style="font-size: 10px; opacity: 0.7;">${timestamp}</span>
       ${readReceiptHtml}
     </div>
   `;
@@ -1540,12 +1540,13 @@ function addMessageToChat(friendId, message) {
       longPressTimer = setTimeout(() => {
         longPressTimer = null;
         if (!isSwiping && !hasMoved) {
+          e.preventDefault();
           const touch = e.touches[0];
           showMessageContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, message.id, friendId, messageType, message.content || '', messageDiv, message.sender_id === currentUserId);
         }
       }, 600); // Slightly longer for better UX
     }
-  }, { passive: true });
+  }, { passive: false }); // Changed to false to allow preventDefault
 
   messageDiv.addEventListener('touchmove', (e) => {
     if (e.touches.length !== 1 || !touchStartX || !touchStartY) return;
@@ -2397,9 +2398,6 @@ function openImageModal(imageUrl) {
 function showChatNotification(username, content, senderId) {
   const notification = document.getElementById('chat-notification');
   const contentEl = document.getElementById('notification-content');
-  if (!notification || !contentEl) {
-    return;
-  }
 
   contentEl.textContent = `${username}: ${content.length > 30 ? content.substring(0, 30) + '...' : content}`;
   notification.style.display = 'block';
@@ -2414,10 +2412,6 @@ function showChatNotification(username, content, senderId) {
 
 function hideChatNotification() {
   const notification = document.getElementById('chat-notification');
-  if (!notification) {
-    currentNotificationData = null;
-    return;
-  }
   notification.style.display = 'none';
   currentNotificationData = null;
 }
@@ -2885,70 +2879,3 @@ async function initializeApp() {
 }
 
 initializeApp();
-
-function setupMadeForJModal() {
-  const footer = document.getElementById('footer');
-  const modal = document.getElementById('madeForJModal');
-  const closeBtn = document.getElementById('madeForJClose');
-  if (!footer || !modal) return;
-
-  let pressTimer = null;
-  let mouseDownTime = 0;
-
-  const openMadeForJModal = () => {
-    modal.classList.add('show');
-  };
-
-  const closeMadeForJModal = () => {
-    modal.classList.remove('show');
-  };
-
-  footer.addEventListener('touchstart', () => {
-    pressTimer = setTimeout(openMadeForJModal, 600);
-  }, { passive: true });
-
-  footer.addEventListener('touchend', () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  }, { passive: true });
-
-  footer.addEventListener('touchmove', () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  }, { passive: true });
-
-  footer.addEventListener('mousedown', () => {
-    mouseDownTime = Date.now();
-  });
-
-  footer.addEventListener('mouseup', () => {
-    const pressDuration = Date.now() - mouseDownTime;
-    if (pressDuration > 600) {
-      openMadeForJModal();
-    }
-  });
-
-  footer.addEventListener('mouseleave', () => {
-    mouseDownTime = 0;
-  });
-
-  closeBtn?.addEventListener('click', closeMadeForJModal);
-
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      closeMadeForJModal();
-    }
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeMadeForJModal();
-    }
-  });
-}
-
-setupMadeForJModal();
