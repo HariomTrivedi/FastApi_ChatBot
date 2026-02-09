@@ -53,6 +53,8 @@ let isReplyMode = false;
 let replyMessageId = null;
 let replyFriendId = null;
 let replyMessageData = null;
+const pendingReplyJumps = new Map();
+const pendingPasteImages = new Map();
 const CHAT_PAGE_SIZE = 50;
 
 // Function to generate avatar colors based on username
@@ -114,6 +116,60 @@ function getMessageContentElement(messageDiv) {
   );
   
   return contentEl;
+}
+
+function findMessageElement(friendId, messageId) {
+  return document.querySelector(
+    `#chat-messages-${friendId} .chat-message[data-message-id="${messageId}"]`
+  );
+}
+
+async function scrollToRepliedMessage(friendId, messageId) {
+  const messagesEl = document.getElementById(`chat-messages-${friendId}`);
+  if (!messagesEl || !messageId) return;
+
+  if (pendingReplyJumps.get(friendId)) return;
+  pendingReplyJumps.set(friendId, true);
+
+  try {
+    let target = findMessageElement(friendId, messageId);
+    let attempts = 0;
+
+    while (!target && attempts < 20) {
+      const loadedCount = await loadMoreMessages(friendId, { autoJump: true });
+      if (!loadedCount || loadedCount < CHAT_PAGE_SIZE) break;
+      target = findMessageElement(friendId, messageId);
+      attempts += 1;
+    }
+
+    if (!target) {
+      console.warn('Reply target not found:', messageId);
+      return;
+    }
+
+    target.classList.add('message-highlight');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    setTimeout(() => {
+      target.classList.remove('message-highlight');
+    }, 1600);
+  } finally {
+    pendingReplyJumps.delete(friendId);
+  }
+}
+
+function wireReplyJump(messageDiv, friendId, message) {
+  if (!message || !message.reply_to_message_id) return;
+  const replyEl = messageDiv.querySelector('.message-reply');
+  if (!replyEl) return;
+
+  replyEl.dataset.replyToId = String(message.reply_to_message_id);
+  replyEl.title = 'Jump to replied message';
+  replyEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    scrollToRepliedMessage(friendId, message.reply_to_message_id);
+  });
 }
 
 async function fetchActiveUsers() {
@@ -1131,19 +1187,23 @@ function createChatWindow(friendId) {
     </div>
     <div id="reply-indicator-${friendId}" class="reply-indicator" style="display: none;"></div>
     <div class="chat-input-area" style="position: relative;">
-      <div class="chat-upload-buttons">
+      <div class="chat-input-row">
+        <div class="chat-input-wrap">
+          <div class="chat-input-icons">
         <label class="chat-upload-btn" title="Upload file (images, audio, documents, etc.)" for="file-upload-${friendId}">
           <input type="file" id="file-upload-${friendId}" onchange="handleFileUpload(event, ${friendId})" style="display: none;">
           <svg viewBox="0 0 24 24">
             <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
           </svg>
         </label>
+        <button class="chat-upload-btn emoji-btn" id="emoji-btn-${friendId}" title="Insert emoji" type="button">
+          <span style="font-size: 20px;">😊</span>
+        </button>
+          </div>
+          <input type="text" class="chat-input" id="chat-input-${friendId}" placeholder="Type your message..." onkeypress="handleChatKeyPress(event, ${friendId})">
+        </div>
+        <button class="chat-send" onclick="sendChatMessage(${friendId})" title="Send message">Send</button>
       </div>
-      <button class="chat-upload-btn emoji-btn" id="emoji-btn-${friendId}" title="Insert emoji" type="button">
-        <span style="font-size: 20px;">😊</span>
-      </button>
-      <input type="text" class="chat-input" id="chat-input-${friendId}" placeholder="Type your message..." onkeypress="handleChatKeyPress(event, ${friendId})">
-      <button class="chat-send" onclick="sendChatMessage(${friendId})" title="Send message">Send</button>
       <simple-emoji-picker id="emoji-picker-${friendId}" class="emoji-picker" style="display: none;"></simple-emoji-picker>
     </div>
     <div class="upload-progress" id="upload-progress-${friendId}"></div>
@@ -1252,6 +1312,36 @@ function createChatWindow(friendId) {
 
     // Store the close function for cleanup if needed
     chatWindow._closeEmojiPicker = closePicker;
+    
+    chatInput.addEventListener('paste', (event) => {
+      const items = event.clipboardData?.items;
+      if (!items || !items.length) return;
+
+      let imageFile = null;
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          imageFile = item.getAsFile();
+          break;
+        }
+      }
+
+      if (!imageFile) return;
+
+      event.preventDefault();
+
+      if (imageFile.size > 10 * 1024 * 1024) {
+        alert('Image is too large. Maximum size is 10MB.');
+        return;
+      }
+
+      pendingPasteImages.set(friendId, imageFile);
+
+      const progressEl = document.getElementById(`upload-progress-${friendId}`);
+      if (progressEl) {
+        progressEl.textContent = `Image ready to send: ${imageFile.name || 'pasted image'}`;
+        progressEl.classList.add('active');
+      }
+    });
   } else {
     console.error('Emoji picker setup failed - elements not found:', { emojiBtn, emojiPicker, chatInput });
   }
@@ -1338,7 +1428,7 @@ function toggleLoadMore(friendId, loadedCount) {
   wrap.style.display = loadedCount < CHAT_PAGE_SIZE ? 'none' : 'block';
 }
 
-async function loadMoreMessages(friendId) {
+async function loadMoreMessages(friendId, options = {}) {
   const token = await getToken(true);
   if (!token) return;
   const messagesEl = document.getElementById(`chat-messages-${friendId}`);
@@ -1376,6 +1466,7 @@ async function loadMoreMessages(friendId) {
     messagesEl.dataset.offset = String(currentOffset + messages.length);
     toggleLoadMore(friendId, messages.length);
     messagesEl.scrollTop = messagesEl.scrollHeight - previousScrollHeight;
+    return messages.length;
   } catch (err) {
     console.error('Error loading more messages:', err);
   }
@@ -1505,6 +1596,8 @@ function addMessageToChat(friendId, message) {
       ${readReceiptHtml}
     </div>
   `;
+
+  wireReplyJump(messageDiv, friendId, message);
 
   messagesEl.appendChild(messageDiv);
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -1752,6 +1845,8 @@ function renderMessageNode(friendId, message) {
     </div>
   `;
 
+  wireReplyJump(messageDiv, friendId, message);
+
   messageDiv.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     showMessageContextMenu(e, message.id, friendId, messageType, message.content || '', messageDiv, message.sender_id === currentUserId);
@@ -1958,6 +2053,20 @@ document.getElementById('context-menu-delete')?.addEventListener('click', async 
 async function sendChatMessage(friendId) {
   const inputEl = document.getElementById(`chat-input-${friendId}`);
   const message = inputEl.value.trim();
+  const pendingImage = pendingPasteImages.get(friendId);
+
+  if (pendingImage && !isEditMode) {
+    pendingPasteImages.delete(friendId);
+    await uploadFile(pendingImage, friendId, true);
+    if (isReplyMode && replyFriendId === friendId) {
+      clearReplyMode(friendId);
+    }
+    const progressEl = document.getElementById(`upload-progress-${friendId}`);
+    if (progressEl) {
+      progressEl.classList.remove('active');
+    }
+    return;
+  }
 
   if (!message) return;
 

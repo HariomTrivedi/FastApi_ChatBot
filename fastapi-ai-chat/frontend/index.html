@@ -171,13 +171,8 @@
         constructor() {
           super();
           this.attachShadow({ mode: 'open' });
-          this.currentCategory = 'recent';
-          this.recentEmojis = this.loadRecentEmojis();
+          this.currentCategory = 'faces';
           this.categories = {
-            recent: {
-              name: '🕒',
-              emojis: ['😊', '😂', '❤️', '👍', '🔥', '💯', '👏', '🙌']
-            },
             faces: {
               name: '😀',
               emojis: [
@@ -244,33 +239,15 @@
         }
 
         loadRecentEmojis() {
-          try {
-            const recent = localStorage.getItem('emojiPicker_recent');
-            return recent ? JSON.parse(recent) : ['😊', '😂', '❤️', '👍', '🔥', '💯', '👏', '🙌'];
-          } catch (e) {
-            return ['😊', '😂', '❤️', '👍', '🔥', '💯', '👏', '🙌'];
-          }
+          return [];
         }
 
         saveRecentEmojis(emojis) {
-          try {
-            localStorage.setItem('emojiPicker_recent', JSON.stringify(emojis));
-          } catch (e) {
-            // Ignore storage errors
-          }
+          // Recent emojis disabled
         }
 
         trackEmojiUsage(emoji) {
-          // Remove emoji if it already exists
-          this.recentEmojis = this.recentEmojis.filter(e => e !== emoji);
-          // Add emoji to the beginning
-          this.recentEmojis.unshift(emoji);
-          // Keep only the first 24 emojis
-          this.recentEmojis = this.recentEmojis.slice(0, 24);
-          // Save to localStorage
-          this.saveRecentEmojis(this.recentEmojis);
-          // Update the recent category
-          this.categories.recent.emojis = this.recentEmojis.slice(0, 24);
+          // Recent emojis disabled
         }
 
 
@@ -282,9 +259,6 @@
         }
 
         render() {
-          // Update recent category with current recent emojis
-          this.categories.recent.emojis = this.recentEmojis;
-
           const style = `
             <style>
               :host {
