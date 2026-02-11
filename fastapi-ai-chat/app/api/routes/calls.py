@@ -9,7 +9,7 @@ from app.services.websocket_manager import WebSocketManager
 
 router = APIRouter()
 
-SIGNAL_TYPES = {"offer", "answer", "ice"}
+SIGNAL_TYPES = {"offer", "answer", "ice", "busy"}
 
 
 class CallTarget(BaseModel):

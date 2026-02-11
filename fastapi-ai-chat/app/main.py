@@ -31,5 +31,4 @@ def create_app() -> FastAPI:
     register_startup_shutdown(app)
     return app
 
-
 app = create_app()

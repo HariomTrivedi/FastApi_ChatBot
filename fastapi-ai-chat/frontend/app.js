@@ -9,11 +9,13 @@ const chatCard = document.getElementById("chatCard");
 const dashboardCard = document.getElementById("dashboardCard");
 const loginCard = document.getElementById("loginCard");
 const authCard = document.getElementById("authCard");
+const authWrapper = document.getElementById("authWrapper");
 const loginStatus = document.getElementById("loginStatus");
 const sidebar = document.getElementById("sidebar");
 const usersList = document.getElementById("usersList");
 const friendsList = document.getElementById("friendsList");
 const friendRequestsList = document.getElementById("friendRequestsList");
+const hamburgerBtn = document.getElementById('hamburgerBtn');
 
 // Register form
 const regEmail = document.getElementById("regEmail");
@@ -40,6 +42,12 @@ let pendingIncomingCall = null;
 let pendingIceCandidates = [];
 let pendingOffer = null;
 let pendingLocalStream = null;
+let ringtoneInterval = null;
+let ringtoneContext = null;
+let ringtoneOsc = null;
+let vibrationTimer = null;
+const typingTimers = new Map();
+const typingStates = new Map();
 
 // Edit mode variables - MUTUALLY EXCLUSIVE with reply mode
 // Edit mode is for modifying existing messages; takes priority when entering
@@ -78,6 +86,21 @@ function getAvatarColor(username) {
 
   return colors[Math.abs(hash) % colors.length];
 }
+// Hamburger
+hamburgerBtn.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (
+    window.innerWidth <= 768 &&
+    sidebar.classList.contains('open') &&
+    !sidebar.contains(e.target) &&
+    !hamburgerBtn.contains(e.target)
+  ) {
+    sidebar.classList.remove('open');
+  }
+});
+
 
 // Robust emoji-only detection that handles VS16 (\uFE0F), ZWJ sequences (\u200D),
 // the heavy black heart (\u2764) and common modifiers (skin tones).
@@ -386,8 +409,8 @@ function displayFriendRequests(requests) {
           <div class="user-email">${senderUser.email}</div>
         </div>
         <div style="display: flex; gap: 4px;">
-          <button class="request-btn accept" onclick="acceptFriendRequest(${request.id})">Accept</button>
           <button class="request-btn decline" onclick="declineFriendRequest(${request.id})">Decline</button>
+          <button class="request-btn accept" onclick="acceptFriendRequest(${request.id})">Accept</button>
         </div>
       </div>
     `;
@@ -643,21 +666,30 @@ function getIncomingModal() {
   return document.getElementById('incoming-call');
 }
 
-function showIncomingCall(fromUserId, callId) {
+function showIncomingCall(fromUserId, callId, metadata = {}) {
+  if (callState) {
+    // Already in a call; auto-decline new incoming call
+    callApi('/calls/decline', { to_user_id: fromUserId, call_id: callId }).catch(() => {});
+    sendSignal(fromUserId, 'busy', { reason: 'busy' }, callId);
+    return;
+  }
   const modal = getIncomingModal();
   const title = document.getElementById('incoming-title');
   const subtitle = document.getElementById('incoming-subtitle');
   const friend = getFriendInfo(fromUserId);
-  title.textContent = friend ? `Incoming call from ${friend.username}` : 'Incoming call';
+  const kindLabel = metadata?.kind === 'audio' ? 'Audio call' : 'Incoming call';
+  title.textContent = friend ? `${kindLabel} from ${friend.username}` : kindLabel;
   subtitle.textContent = friend ? friend.email : `User ${fromUserId}`;
   modal.style.display = 'flex';
+  startRingtone();
 
-  pendingIncomingCall = { fromUserId, callId };
+  pendingIncomingCall = { fromUserId, callId, metadata };
 }
 
 function hideIncomingCall() {
   const modal = getIncomingModal();
   modal.style.display = 'none';
+  stopRingtone();
   pendingIncomingCall = null;
   if (pendingLocalStream) {
     pendingLocalStream.getTracks().forEach(t => t.stop());
@@ -673,6 +705,57 @@ function hideCallOverlay() {
   document.getElementById('video-call-overlay').style.display = 'none';
 }
 
+function startRingtone() {
+  if (ringtoneInterval) return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    ringtoneContext = new AudioCtx();
+    const playBeep = () => {
+      if (!ringtoneContext) return;
+      ringtoneOsc = ringtoneContext.createOscillator();
+      const gain = ringtoneContext.createGain();
+      ringtoneOsc.type = 'sine';
+      ringtoneOsc.frequency.value = 620;
+      gain.gain.value = 0.08;
+      ringtoneOsc.connect(gain).connect(ringtoneContext.destination);
+      ringtoneOsc.start();
+      ringtoneOsc.stop(ringtoneContext.currentTime + 0.25);
+    };
+    playBeep();
+    ringtoneInterval = setInterval(playBeep, 900);
+  } catch (err) {
+    console.warn('Ringtone blocked:', err);
+  }
+
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200]);
+    vibrationTimer = setInterval(() => navigator.vibrate([200, 100, 200]), 2000);
+  }
+}
+
+function stopRingtone() {
+  if (ringtoneInterval) {
+    clearInterval(ringtoneInterval);
+    ringtoneInterval = null;
+  }
+  if (vibrationTimer) {
+    clearInterval(vibrationTimer);
+    vibrationTimer = null;
+  }
+  if (ringtoneOsc) {
+    try { ringtoneOsc.stop(); } catch {}
+    ringtoneOsc = null;
+  }
+  if (ringtoneContext) {
+    try { ringtoneContext.close(); } catch {}
+    ringtoneContext = null;
+  }
+  if (navigator.vibrate) {
+    navigator.vibrate(0);
+  }
+}
+
 function setCallUIStatus(title, status) {
   const titleEl = document.getElementById('vc-title');
   const statusEl = document.getElementById('vc-status');
@@ -680,18 +763,23 @@ function setCallUIStatus(title, status) {
   if (statusEl) statusEl.textContent = status || '';
 }
 
-async function preflightMediaPermissions(attachToCallState = false) {
+async function preflightMediaPermissions(attachToCallState = false, options = {}) {
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('Media devices not available. Use HTTPS and a supported browser.');
     }
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (options.audioOnly) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        setCallUIStatus('Audio call', 'Audio only');
+      } else {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      }
     } catch (err) {
       const name = err?.name || '';
       // If camera fails or is busy, fall back to audio-only
-      if (name === 'AbortError' || name === 'NotReadableError' || name === 'NotFoundError') {
+      if (!options.audioOnly && (name === 'AbortError' || name === 'NotReadableError' || name === 'NotFoundError')) {
         stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
         setCallUIStatus('Audio call', 'Video unavailable');
       } else {
@@ -800,9 +888,41 @@ async function startVideoCall(friendId) {
   }
 }
 
+async function startAudioCall(friendId) {
+  if (callState) {
+    alert('A call is already active.');
+    return;
+  }
+
+  await ensureSocket();
+
+  const callId = generateCallId();
+  callState = {
+    friendId,
+    callId,
+    isCaller: true,
+    pc: null,
+    localStream: null,
+    remoteStream: null
+  };
+
+  const friend = getFriendInfo(friendId);
+  showCallOverlay();
+  setCallUIStatus(friend ? `Calling ${friend.username}` : 'Calling...', 'Audio call');
+
+  try {
+    await preflightMediaPermissions(true, { audioOnly: true });
+    await callApi('/calls/start', { to_user_id: friendId, call_id: callId, metadata: { kind: 'audio' } });
+  } catch (err) {
+    console.error(err);
+    endCallCleanup();
+    alert('Failed to start audio call.');
+  }
+}
+
 async function acceptIncomingCall() {
   if (!pendingIncomingCall) return;
-  const { fromUserId, callId } = pendingIncomingCall;
+  const { fromUserId, callId, metadata } = pendingIncomingCall;
   hideIncomingCall();
 
   if (callState) {
@@ -825,7 +945,8 @@ async function acceptIncomingCall() {
 
   try {
     await ensureSocket();
-    await preflightMediaPermissions(true);
+    const audioOnly = metadata?.kind === 'audio';
+    await preflightMediaPermissions(true, { audioOnly });
     await callApi('/calls/accept', { to_user_id: fromUserId, call_id: callId });
     await setupPeerConnection();
     if (pendingOffer) {
@@ -922,6 +1043,7 @@ async function startCallerOffer() {
 
 async function handleOffer(data) {
   if (!callState) return;
+  if (data.call_id && data.call_id !== callState.callId) return;
   if (!callState.pc) {
     await setupPeerConnection();
   }
@@ -933,10 +1055,12 @@ async function handleOffer(data) {
 
 async function handleAnswer(data) {
   if (!callState || !callState.pc) return;
+  if (data.call_id && data.call_id !== callState.callId) return;
   await callState.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
 }
 
 async function handleIce(data) {
+  if (callState && data.call_id && data.call_id !== callState.callId) return;
   const candidate = new RTCIceCandidate(data.candidate);
   if (callState && callState.pc) {
     try {
@@ -999,6 +1123,7 @@ async function endCall() {
 }
 
 function endCallCleanup() {
+  stopRingtone();
   if (callState && callState.pc) {
     callState.pc.ontrack = null;
     callState.pc.onicecandidate = null;
@@ -1172,6 +1297,11 @@ function createChatWindow(friendId) {
     <div class="chat-header">
       <div class="chat-title" id="chat-title-${friendId}">Chat with ${username}</div>
       <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="chat-upload-btn" title="Start audio call" onclick="startAudioCall(${friendId})" style="width: 36px; height: 36px; border-radius: 10px;">
+          <svg class="audio-call-icon" width="20" height="20" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+            <path d="M391 321c-27-9-55 0-73 18l-22 22c-69-37-116-84-153-153l22-22c18-18 27-46 18-73L159 32c-7-20-26-32-47-32H64C29 0 0 29 0 64c0 247 201 448 448 448 35 0 64-29 64-64v-48c0-21-12-40-32-47l-89-32z"/>
+          </svg>
+        </button>
         <button class="chat-upload-btn" title="Start video call" onclick="startVideoCall(${friendId})" style="width: 36px; height: 36px; border-radius: 10px;">
           <svg viewBox="0 0 24 24">
             <path d="M17 10.5V7c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-3.5l4 4v-11l-4 4z"/>
@@ -1187,6 +1317,10 @@ function createChatWindow(friendId) {
     </div>
     <div id="reply-indicator-${friendId}" class="reply-indicator" style="display: none;"></div>
     <div class="chat-input-area" style="position: relative;">
+      <div class="typing-indicator" id="typing-indicator-${friendId}">
+        <span class="typing-text">${username} is typing</span>
+        <span class="typing-dots"><span></span><span></span><span></span></span>
+      </div>
       <div class="chat-input-row">
         <div class="chat-input-wrap">
           <div class="chat-input-icons">
@@ -1212,6 +1346,12 @@ function createChatWindow(friendId) {
   // Add drag functionality to header (desktop only)
   const header = chatWindow.querySelector('.chat-header');
   header.style.cursor = 'move';
+
+  const inputEl = chatWindow.querySelector(`#chat-input-${friendId}`);
+  if (inputEl) {
+    inputEl.addEventListener('input', () => handleTypingInput(friendId, inputEl));
+    inputEl.addEventListener('blur', () => stopTyping(friendId));
+  }
 
   header.addEventListener('mousedown', (e) => {
     if (window.innerWidth <= 768) return; // Disable dragging on mobile
@@ -1352,6 +1492,7 @@ function createChatWindow(friendId) {
 function closeChatWindow(friendId) {
   const chatWindow = document.getElementById(`chat-window-${friendId}`);
   if (chatWindow) {
+    stopTyping(friendId);
     // Remove animation class first
     chatWindow.classList.remove('show');
     // Wait for animation to complete before hiding
@@ -2149,6 +2290,7 @@ async function sendChatMessage(friendId) {
 
     // Clear input
     inputEl.value = '';
+    stopTyping(friendId);
 
     // Clear reply mode if it was active
     if (isReplyMode && replyFriendId === friendId) {
@@ -2174,6 +2316,9 @@ function exitEditMode(inputEl) {
   if (inputEl) {
     inputEl.value = '';
     inputEl.placeholder = 'Type your message...';
+    const idPart = inputEl.id?.replace('chat-input-', '');
+    const friendId = idPart ? parseInt(idPart, 10) : null;
+    if (friendId) stopTyping(friendId);
   }
 }
 
@@ -2234,6 +2379,61 @@ function handleChatKeyPress(event, friendId) {
       clearReplyMode(friendId);
     }
   }
+}
+
+function handleTypingInput(friendId, inputEl) {
+  const hasText = Boolean(inputEl.value.trim());
+  if (hasText) {
+    startTyping(friendId);
+  } else {
+    stopTyping(friendId);
+  }
+}
+
+async function startTyping(friendId) {
+  if (typingStates.get(friendId)) {
+    resetTypingTimer(friendId);
+    return;
+  }
+  typingStates.set(friendId, true);
+  await sendTypingStatus(friendId, true);
+  resetTypingTimer(friendId);
+}
+
+function resetTypingTimer(friendId) {
+  if (typingTimers.has(friendId)) {
+    clearTimeout(typingTimers.get(friendId));
+  }
+  const timer = setTimeout(() => stopTyping(friendId), 1200);
+  typingTimers.set(friendId, timer);
+}
+
+async function stopTyping(friendId) {
+  if (typingTimers.has(friendId)) {
+    clearTimeout(typingTimers.get(friendId));
+    typingTimers.delete(friendId);
+  }
+  if (!typingStates.get(friendId)) return;
+  typingStates.set(friendId, false);
+  await sendTypingStatus(friendId, false);
+}
+
+async function sendTypingStatus(friendId, isTyping) {
+  const ws = await ensureSocket();
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    type: "typing",
+    to_user_id: friendId,
+    data: { is_typing: isTyping }
+  }));
+}
+
+function handleTypingIndicator(data) {
+  const fromUserId = data.from_user_id;
+  if (!fromUserId) return;
+  const indicator = document.getElementById(`typing-indicator-${fromUserId}`);
+  if (!indicator) return;
+  indicator.classList.toggle('is-active', Boolean(data.is_typing));
 }
 
 // File upload handlers
@@ -2608,17 +2808,29 @@ async function ensureSocket() {
       handleMessageEdited(data.data);
     } else if (data.type === "message_deleted") {
       handleMessageDeleted(data.data);
+    } else if (data.type === "typing") {
+      handleTypingIndicator(data.data);
     } else if (data.type === "call_start") {
-      showIncomingCall(data.data.from_user_id, data.data.call_id);
+      showIncomingCall(data.data.from_user_id, data.data.call_id, data.data.metadata || {});
     } else if (data.type === "call_accept") {
-      if (callState && callState.isCaller) startCallerOffer();
+      if (callState && callState.isCaller) {
+        if (!data.data?.call_id || data.data.call_id === callState.callId) {
+          startCallerOffer();
+        }
+      }
     } else if (data.type === "call_decline") {
       if (callState) {
         alert("Call declined");
         endCallCleanup();
       }
-    } else if (data.type === "call_end") {
+    } else if (data.type === "busy") {
+      if (callState && data.data?.call_id && data.data.call_id !== callState.callId) return;
+      alert("User is busy on another call.");
       endCallCleanup();
+    } else if (data.type === "call_end") {
+      if (!callState || !data.data?.call_id || data.data.call_id === callState.callId) {
+        endCallCleanup();
+      }
     } else if (data.type === "offer") {
       if (!callState) {
         pendingOffer = data.data;
@@ -2662,9 +2874,10 @@ function handleMessageDeleted(data) {
 
 async function showDashboard() {
   dashboardCard.style.display = "block";
-  loginCard.style.display = "none";
-  authCard.style.display = "none";
+  // hamburgerBtn.style.display = 'block';
+  if (authWrapper) authWrapper.style.display = "none";
   sidebar.style.display = "block";
+  document.body.classList.remove("auth-view");
 
   // Establish WebSocket connection for real-time updates
   try {
@@ -2725,10 +2938,31 @@ document.getElementById('vc-cam')?.addEventListener('click', () => {
 
 function showAuth() {
   dashboardCard.style.display = "none";
-  loginCard.style.display = "block";
-  authCard.style.display = "block";
+  // hamburgerBtn.style.display = 'none';
+  if (authWrapper) authWrapper.style.display = "flex";
   sidebar.style.display = "none";
+  document.body.classList.add("auth-view");
+  setAuthTab("login");
 }
+
+const authTabs = document.querySelectorAll(".auth-tab");
+
+function setAuthTab(mode) {
+  const showLogin = mode === "login";
+  loginCard.classList.toggle("is-active", showLogin);
+  authCard.classList.toggle("is-active", !showLogin);
+  authTabs.forEach((tab) => {
+    const isActive = tab.dataset.auth === mode;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+}
+
+authTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    setAuthTab(tab.dataset.auth || "login");
+  });
+});
 
 function saveToken(token) {
   localStorage.setItem(TOKEN_KEY, token);
@@ -3059,5 +3293,6 @@ function setupMadeForJModal() {
     }
   });
 }
+
 
 setupMadeForJModal();

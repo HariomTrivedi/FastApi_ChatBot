@@ -4,12 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FastAPI AI Chat</title>
+    <link rel="icon" type="image/png" href="/Images/fav.png" />
     <link rel="stylesheet" href="/styles.css">
-</head>
+  </head>
   <body>
     <div id="container">
       <h2>FastAPI AI Chat</h2>
-
+          <button id="hamburgerBtn" class="hamburger" aria-label="Toggle menu">
+            ☰
+          </button>
       <div id="mainLayout">
         <div id="sidebar">
           <div class="sidebar-card">
@@ -32,46 +35,59 @@
           </div>
         </div>
       <div id="mainContent">
-      <div class="card" id="authCard">
-        <h3>Register</h3>
-        <div class="row">
-          <div class="field">
-            <label for="regEmail">Email</label>
-            <input id="regEmail" type="email" placeholder="you@example.com" />
-          </div>
-          <div class="field">
-            <label for="regUsername">Username</label>
-            <input id="regUsername" type="text" placeholder="username" />
-          </div>
-        </div>
-        <div class="row">
-          <div class="field">
-            <label for="regPassword">Password</label>
-            <input id="regPassword" type="password" placeholder="••••••" />
-          </div>
-          <div class="field">
-            <label for="regFullname">Full name</label>
-            <input id="regFullname" type="text" placeholder="Optional" />
-          </div>
-        </div>
-        <button id="registerBtn">Register</button>
-      </div>
+        <div class="auth-wrapper" id="authWrapper">
+          <div class="auth-frame">
+            <div class="auth-inner">
+              <div class="auth-tabs" role="tablist" aria-label="Authentication tabs">
+                <button class="auth-tab is-active" data-auth="login" type="button" role="tab" aria-selected="true" aria-controls="loginCard">Login</button>
+                <button class="auth-tab" data-auth="register" type="button" role="tab" aria-selected="false" aria-controls="authCard">Register</button>
+              </div>
 
-      <div class="card" id="loginCard">
-        <h3>Login</h3>
-        <div class="row">
-          <div class="field">
-            <label for="loginEmail">Email</label>
-            <input id="loginEmail" type="email" placeholder="you@example.com" />
-          </div>
-          <div class="field">
-            <label for="loginPassword">Password</label>
-            <input id="loginPassword" type="password" placeholder="••••••" />
+              <div class="auth-panel is-active" id="loginCard" role="tabpanel">
+                <h3>Login</h3>
+                <div class="row">
+                  <div class="field">
+                    <label for="loginEmail">Email</label>
+                    <input id="loginEmail" type="email" placeholder="you@example.com" />
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="field">
+                    <label for="loginPassword">Password</label>
+                    <input id="loginPassword" type="password" placeholder="••••••" />
+                  </div>
+                </div>
+                <button id="loginBtn">Login</button>
+                <div id="loginStatus"></div>
+              </div>
+
+              <div class="auth-panel" id="authCard" role="tabpanel">
+                <h3>Register</h3>
+                <div class="row">
+                  <div class="field">
+                    <label for="regEmail">Email</label>
+                    <input id="regEmail" type="email" placeholder="you@example.com" />
+                  </div>
+                  <div class="field">
+                    <label for="regUsername">Username</label>
+                    <input id="regUsername" type="text" placeholder="username" />
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="field">
+                    <label for="regPassword">Password</label>
+                    <input id="regPassword" type="password" placeholder="••••••" />
+                  </div>
+                  <div class="field">
+                    <label for="regFullname">Full name</label>
+                    <input id="regFullname" type="text" placeholder="Optional" />
+                  </div>
+                </div>
+                <button id="registerBtn">Register</button>
+              </div>
+            </div>
           </div>
         </div>
-        <button id="loginBtn">Login</button>
-        <div id="loginStatus"></div>
-      </div>
 
       <div class="card is-hidden" id="dashboardCard">
         <div class="dashboard-header">

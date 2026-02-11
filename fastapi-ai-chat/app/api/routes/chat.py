@@ -16,6 +16,10 @@ CALL_SIGNAL_TYPES = {
     "call_end",
 }
 
+TYPING_SIGNAL_TYPES = {
+    "typing",
+}
+
 
 @router.websocket("/ws")
 async def websocket_endpoint(
@@ -30,7 +34,7 @@ async def websocket_endpoint(
             data = await websocket.receive_json()
             if isinstance(data, dict) and "type" in data:
                 msg_type = data.get("type")
-                if msg_type in CALL_SIGNAL_TYPES:
+                if msg_type in CALL_SIGNAL_TYPES or msg_type in TYPING_SIGNAL_TYPES:
                     to_user_id = (
                         data.get("to_user_id")
                         or data.get("target_user_id")
