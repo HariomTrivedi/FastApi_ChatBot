@@ -1,17 +1,72 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
-from typing import List
+from typing import Dict, List, Set
 from pathlib import Path
 
 from app.db.database import get_db
-from app.db.models import User, ChatMessage, MessageType
-from app.schemas.user import ChatMessageCreate, ChatMessageUpdate, ChatMessageResponse
+from app.db.models import User, ChatMessage, ChatMessageReaction, MessageType
+from app.schemas.user import (
+    ChatMessageCreate,
+    ChatMessageUpdate,
+    ChatMessageResponse,
+    MessageReactionToggle,
+    MessageReactionSummary,
+    MessageReactionsResponse,
+    MessageReactionsBulkRequest,
+    MessageReactionsBulkResponse,
+)
 from app.core.security import get_current_user
 from app.services.websocket_manager import WebSocketManager
 from app.utils.file_utils import save_chat_file
 
 router = APIRouter()
+
+def _build_reaction_summaries(
+    reactions: List[ChatMessageReaction],
+    current_user_id: int,
+) -> List[MessageReactionSummary]:
+    by_emoji: Dict[str, Set[int]] = {}
+    for reaction in reactions:
+        by_emoji.setdefault(reaction.emoji, set()).add(reaction.user_id)
+
+    summaries: List[MessageReactionSummary] = []
+    for emoji, user_ids in by_emoji.items():
+        summaries.append(
+            MessageReactionSummary(
+                emoji=emoji,
+                count=len(user_ids),
+                reacted_by_me=current_user_id in user_ids,
+            )
+        )
+
+    # Stable ordering: most-used first, then emoji
+    summaries.sort(key=lambda r: (-r.count, r.emoji))
+    return summaries
+
+
+def _fetch_reaction_summaries_by_message_id(
+    db: Session,
+    message_ids: List[int],
+    current_user_id: int,
+) -> Dict[int, List[MessageReactionSummary]]:
+    if not message_ids:
+        return {}
+
+    rows = (
+        db.query(ChatMessageReaction)
+        .filter(ChatMessageReaction.message_id.in_(message_ids))
+        .all()
+    )
+
+    by_message: Dict[int, List[ChatMessageReaction]] = {}
+    for row in rows:
+        by_message.setdefault(row.message_id, []).append(row)
+
+    return {
+        message_id: _build_reaction_summaries(reactions, current_user_id)
+        for message_id, reactions in by_message.items()
+    }
 
 
 @router.post("/send", response_model=ChatMessageResponse, status_code=status.HTTP_201_CREATED)
@@ -101,6 +156,7 @@ async def send_message(
                 "message_type": message.message_type,
                 "reply_to_message_id": message.reply_to_message_id,
                 "reply_to_message": reply_data,
+                "reactions": [],
                 "is_read": False,
                 "created_at": message.created_at.isoformat()
             }
@@ -117,6 +173,7 @@ async def send_message(
         reply_to_message_id=message.reply_to_message_id,
         is_read=message.is_read,
         created_at=message.created_at,
+        reactions=[],
         sender=current_user,
         receiver=receiver,
         reply_to_message=reply_to_message
@@ -159,6 +216,12 @@ async def get_conversation(
         ((ChatMessage.sender_id == friend_id) & (ChatMessage.receiver_id == current_user.id))
     ).order_by(ChatMessage.created_at.desc()).offset(offset).limit(limit).all()
 
+    reaction_map = _fetch_reaction_summaries_by_message_id(
+        db,
+        [m.id for m in messages],
+        current_user.id,
+    )
+
     # Note: Messages are no longer automatically marked as read when loading conversation
     # They will be marked as read only when the chat window is actually opened and viewed
     if messages:
@@ -180,6 +243,7 @@ async def get_conversation(
             reply_to_message_id=message.reply_to_message_id,
             is_read=message.is_read,
             created_at=message.created_at,
+            reactions=reaction_map.get(message.id, []),
             sender=message.sender,
             receiver=message.receiver,
             reply_to_message=message.reply_to_message
@@ -264,6 +328,9 @@ async def delete_message(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own messages")
 
     receiver_id = message.receiver_id
+    db.query(ChatMessageReaction).filter(ChatMessageReaction.message_id == message_id).delete(
+        synchronize_session=False
+    )
     db.delete(message)
     db.commit()
 
@@ -276,6 +343,109 @@ async def delete_message(
     )
 
     return {"deleted": True, "message_id": message_id}
+
+
+@router.post("/{message_id}/reactions/toggle", response_model=MessageReactionsResponse)
+async def toggle_reaction(
+    message_id: int,
+    payload: MessageReactionToggle,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    ws_manager: WebSocketManager = Depends(lambda: WebSocketManager.instance()),
+):
+    """Toggle an emoji reaction on a message (sender or receiver)"""
+    emoji = (payload.emoji or "").strip()
+    if not emoji:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Emoji is required")
+
+    message = db.query(ChatMessage).filter(ChatMessage.id == message_id).first()
+    if not message:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+
+    if current_user.id not in (message.sender_id, message.receiver_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to react to this message")
+
+    existing = db.query(ChatMessageReaction).filter(
+        ChatMessageReaction.message_id == message_id,
+        ChatMessageReaction.user_id == current_user.id,
+        ChatMessageReaction.emoji == emoji,
+    ).first()
+
+    if existing:
+        db.delete(existing)
+    else:
+        db.add(ChatMessageReaction(message_id=message_id, user_id=current_user.id, emoji=emoji))
+
+    db.commit()
+
+    updated_rows = db.query(ChatMessageReaction).filter(ChatMessageReaction.message_id == message_id).all()
+    summaries = _build_reaction_summaries(updated_rows, current_user.id)
+
+    def _dump(m: MessageReactionSummary) -> dict:
+        return m.model_dump() if hasattr(m, "model_dump") else m.dict()
+
+    for user_id in {message.sender_id, message.receiver_id}:
+        per_user_summaries = _build_reaction_summaries(updated_rows, int(user_id))
+        await ws_manager.send_to_user(
+            int(user_id),
+            {
+                "type": "message_reaction_updated",
+                "data": {
+                    "message_id": message_id,
+                    "reactions": [_dump(s) for s in per_user_summaries],
+                },
+            },
+        )
+
+    return {"message_id": message_id, "reactions": [_dump(s) for s in summaries]}
+
+
+@router.post("/reactions/bulk", response_model=MessageReactionsBulkResponse)
+async def get_reactions_bulk(
+    payload: MessageReactionsBulkRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    message_ids = list(dict.fromkeys(payload.message_ids or []))
+    if not message_ids:
+        return {"items": []}
+
+    if len(message_ids) > 200:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many message_ids",
+        )
+
+    accessible = (
+        db.query(ChatMessage.id)
+        .filter(
+            ChatMessage.id.in_(message_ids),
+            (
+                (ChatMessage.sender_id == current_user.id)
+                | (ChatMessage.receiver_id == current_user.id)
+            ),
+        )
+        .all()
+    )
+    accessible_ids = [mid for (mid,) in accessible]
+    if not accessible_ids:
+        return {"items": []}
+
+    reaction_map = _fetch_reaction_summaries_by_message_id(
+        db,
+        accessible_ids,
+        current_user.id,
+    )
+
+    items = [
+        {
+            "message_id": mid,
+            "reactions": reaction_map.get(mid, []),
+        }
+        for mid in accessible_ids
+    ]
+
+    return {"items": items}
 
 
 @router.put("/mark-read/{friend_id}", response_model=dict)
@@ -332,6 +502,19 @@ async def delete_conversation(
 
     # Check if they are friends (or were friends)
     from app.db.models import FriendRequest, FriendRequestStatus
+
+    message_ids = [
+        mid
+        for (mid,) in db.query(ChatMessage.id).filter(
+            ((ChatMessage.sender_id == current_user.id) & (ChatMessage.receiver_id == friend_id))
+            | ((ChatMessage.sender_id == friend_id) & (ChatMessage.receiver_id == current_user.id))
+        ).all()
+    ]
+
+    if message_ids:
+        db.query(ChatMessageReaction).filter(ChatMessageReaction.message_id.in_(message_ids)).delete(
+            synchronize_session=False
+        )
 
     # Delete all messages between the two users (both directions)
     deleted_count = db.query(ChatMessage).filter(
@@ -419,6 +602,7 @@ async def send_image(
                 "file_name": file.filename,
                 "file_size": file_size,
                 "mime_type": mime_type,
+                "reactions": [],
                 "is_read": False,
                 "created_at": message.created_at.isoformat()
             }
@@ -438,6 +622,7 @@ async def send_image(
         mime_type=message.mime_type,
         is_read=message.is_read,
         created_at=message.created_at,
+        reactions=[],
         sender=current_user,
         receiver=receiver
     )
@@ -518,6 +703,7 @@ async def send_file(
                 "file_name": file.filename,
                 "file_size": file_size,
                 "mime_type": mime_type,
+                "reactions": [],
                 "is_read": False,
                 "created_at": message.created_at.isoformat()
             }
@@ -537,6 +723,7 @@ async def send_file(
         mime_type=message.mime_type,
         is_read=message.is_read,
         created_at=message.created_at,
+        reactions=[],
         sender=current_user,
         receiver=receiver
     )

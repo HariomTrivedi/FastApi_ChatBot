@@ -80,6 +80,29 @@ class ChatMessageUpdate(BaseModel):
     content: str = Field(..., min_length=1, max_length=1000)
 
 
+class MessageReactionToggle(BaseModel):
+    emoji: str = Field(..., min_length=1, max_length=32)
+
+
+class MessageReactionSummary(BaseModel):
+    emoji: str
+    count: int
+    reacted_by_me: bool = False
+
+
+class MessageReactionsResponse(BaseModel):
+    message_id: int
+    reactions: List[MessageReactionSummary] = Field(default_factory=list)
+
+
+class MessageReactionsBulkRequest(BaseModel):
+    message_ids: List[int] = Field(default_factory=list)
+
+
+class MessageReactionsBulkResponse(BaseModel):
+    items: List[MessageReactionsResponse] = Field(default_factory=list)
+
+
 class ChatMessageResponse(BaseModel):
     id: int
     sender_id: int
@@ -93,10 +116,10 @@ class ChatMessageResponse(BaseModel):
     reply_to_message_id: Optional[int] = None
     is_read: bool
     created_at: datetime
+    reactions: List[MessageReactionSummary] = Field(default_factory=list)
     sender: UserResponse
     receiver: UserResponse
     reply_to_message: Optional['ChatMessageResponse'] = None
 
     class Config:
         from_attributes = True
-

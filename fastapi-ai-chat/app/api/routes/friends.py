@@ -168,8 +168,24 @@ async def remove_friend(
             detail="Friend relationship not found"
         )
 
-    # Delete all chat messages between the two users
-    from app.db.models import ChatMessage
+    # Delete all chat messages between the two users (and their reactions)
+    from app.db.models import ChatMessage, ChatMessageReaction
+
+    message_ids = [
+        mid
+        for (mid,) in db.query(ChatMessage.id).filter(
+            or_(
+                and_(ChatMessage.sender_id == current_user.id, ChatMessage.receiver_id == friend_id),
+                and_(ChatMessage.sender_id == friend_id, ChatMessage.receiver_id == current_user.id),
+            )
+        ).all()
+    ]
+
+    if message_ids:
+        db.query(ChatMessageReaction).filter(ChatMessageReaction.message_id.in_(message_ids)).delete(
+            synchronize_session=False
+        )
+
     deleted_messages = db.query(ChatMessage).filter(
         or_(
             and_(ChatMessage.sender_id == current_user.id, ChatMessage.receiver_id == friend_id),

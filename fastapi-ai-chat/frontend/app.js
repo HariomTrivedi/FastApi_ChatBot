@@ -89,8 +89,14 @@ function getAvatarColor(username) {
 // Hamburger
 hamburgerBtn.addEventListener('click', () => {
   sidebar.classList.toggle('open');
+  hamburgerBtn.classList.toggle('active');
+
+  // Change icon
+  hamburgerBtn.textContent = hamburgerBtn.classList.contains('active') ? '✕' : '☰';
 });
-document.addEventListener('click', e => {
+
+// Click outside sidebar to close it (mobile only)
+document.addEventListener('click', (e) => {
   if (
     window.innerWidth <= 768 &&
     sidebar.classList.contains('open') &&
@@ -98,10 +104,12 @@ document.addEventListener('click', e => {
     !hamburgerBtn.contains(e.target)
   ) {
     sidebar.classList.remove('open');
+
+    // Reset hamburger
+    hamburgerBtn.classList.remove('active');
+    hamburgerBtn.textContent = '☰';
   }
 });
-
-
 // Robust emoji-only detection that handles VS16 (\uFE0F), ZWJ sequences (\u200D),
 // the heavy black heart (\u2764) and common modifiers (skin tones).
 function isEmojiOnlyText(text) {
@@ -1239,35 +1247,29 @@ let dragOffset = { x: 0, y: 0 };
 
 function openChatWindow(friendId) {
   closeOtherChatWindows(friendId);
-  // Check if chat window already exists
   let chatWindow = document.getElementById(`chat-window-${friendId}`);
 
   if (!chatWindow) {
-    // Create new chat window
     chatWindow = createChatWindow(friendId);
     document.getElementById('chat-windows').appendChild(chatWindow);
   }
 
-  // Show the chat window with animation
   chatWindow.style.display = 'flex';
-  // Trigger animation and mark as read after animation completes
   setTimeout(() => {
     chatWindow.classList.add('show');
-    // Mark messages as read only after the window is fully visible
     setTimeout(() => {
       if (chatWindow.style.display !== 'none' && activeChats.has(friendId)) {
         markMessagesAsRead(friendId);
       }
-    }, 300); // Wait for animation to complete
+    }, 300);
   }, 10);
 
   activeChats.add(friendId);
-
-  // Load chat history (but don't mark as read yet)
   loadChatHistory(friendId);
-
-  // Hide notification if it exists
   hideChatNotification();
+
+  // 🔥 Add body class to hide hamburger
+  document.body.classList.add('chat-open');
 }
 
 function closeOtherChatWindows(currentFriendId) {
@@ -1493,12 +1495,16 @@ function closeChatWindow(friendId) {
   const chatWindow = document.getElementById(`chat-window-${friendId}`);
   if (chatWindow) {
     stopTyping(friendId);
-    // Remove animation class first
     chatWindow.classList.remove('show');
-    // Wait for animation to complete before hiding
+
     setTimeout(() => {
       chatWindow.style.display = 'none';
       activeChats.delete(friendId);
+
+      // 🔥 Remove chat-open if no chats are open
+      if (activeChats.size === 0) {
+        document.body.classList.remove('chat-open');
+      }
     }, 300);
   }
 }
@@ -1552,6 +1558,11 @@ async function loadChatHistory(friendId) {
 
     // Add messages to chat
     messages.forEach(message => addMessageToChat(friendId, message));
+    // Ensure reactions are hydrated on refresh
+    const messageIds = messages.map(m => m.id).filter(Boolean);
+    if (messageIds.length) {
+      fetchReactionsBulk(messageIds);
+    }
     messagesEl.dataset.offset = String(messages.length);
     toggleLoadMore(friendId, messages.length);
 
@@ -1603,6 +1614,11 @@ async function loadMoreMessages(friendId, options = {}) {
         messagesEl.appendChild(messageDiv);
       }
     });
+    // Hydrate reactions for newly loaded messages
+    const messageIds = messages.map(m => m.id).filter(Boolean);
+    if (messageIds.length) {
+      fetchReactionsBulk(messageIds);
+    }
 
     messagesEl.dataset.offset = String(currentOffset + messages.length);
     toggleLoadMore(friendId, messages.length);
@@ -1769,17 +1785,16 @@ function addMessageToChat(friendId, message) {
     // Add touch feedback
     messageDiv.style.transition = 'none';
 
-    // Start long press timer for context menu (only on mobile)
-    if (window.innerWidth <= 768) {
-      longPressTimer = setTimeout(() => {
-        longPressTimer = null;
-        if (!isSwiping && !hasMoved) {
-          const touch = e.touches[0];
-          showMessageContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, message.id, friendId, messageType, message.content || '', messageDiv, message.sender_id === currentUserId);
-        }
-      }, 600); // Slightly longer for better UX
-    }
-  }, { passive: true });
+	  // Start long press timer for context menu (only on mobile)
+	  if (window.innerWidth <= 768) {
+	    longPressTimer = setTimeout(() => {
+	      longPressTimer = null;
+	      if (!isSwiping && !hasMoved) {
+	        openReactionBar(messageDiv, message.id, friendId);
+	      }
+	    }, 600); // Slightly longer for better UX
+	  }
+	}, { passive: true });
 
   messageDiv.addEventListener('touchmove', (e) => {
     if (e.touches.length !== 1 || !touchStartX || !touchStartY) return;
@@ -1890,6 +1905,285 @@ function addMessageToChat(friendId, message) {
   });
 }
 
+// Message reactions
+let reactionPickerEl = null;
+let reactionPickerTarget = null;
+let reactionBarEl = null;
+let reactionBarTarget = null;
+
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+
+function ensureReactionPicker() {
+  if (reactionPickerEl) return reactionPickerEl;
+  reactionPickerEl = document.createElement('simple-emoji-picker');
+  reactionPickerEl.id = 'reaction-emoji-picker';
+  reactionPickerEl.className = 'reaction-picker';
+  reactionPickerEl.style.display = 'none';
+  document.body.appendChild(reactionPickerEl);
+
+  reactionPickerEl.addEventListener('emoji-click', async (event) => {
+    const emoji = event?.detail?.unicode;
+    if (!emoji || !reactionPickerTarget) return;
+    const { messageId } = reactionPickerTarget;
+    await toggleMessageReaction(messageId, emoji);
+    closeReactionPicker();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!reactionPickerEl || reactionPickerEl.style.display === 'none') return;
+    if (reactionPickerEl.contains(event.target)) return;
+    if (reactionPickerTarget?.triggerEl && reactionPickerTarget.triggerEl.contains(event.target)) return;
+    closeReactionPicker();
+  });
+
+  return reactionPickerEl;
+}
+
+function ensureReactionBar() {
+  if (reactionBarEl) return reactionBarEl;
+  reactionBarEl = document.createElement('div');
+  reactionBarEl.id = 'message-reaction-bar';
+  reactionBarEl.className = 'reaction-bar';
+  reactionBarEl.style.display = 'none';
+
+  reactionBarEl.innerHTML = `
+    <div class="reaction-bar-inner">
+      <div class="reaction-bar-emojis"></div>
+      <button type="button" class="reaction-bar-more" title="More" aria-label="More reactions">😊+</button>
+    </div>
+  `;
+
+  document.body.appendChild(reactionBarEl);
+
+  // Fill quick emojis
+  const emojisWrap = reactionBarEl.querySelector('.reaction-bar-emojis');
+  QUICK_REACTIONS.forEach((emoji) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'reaction-bar-emoji';
+    btn.textContent = emoji;
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!reactionBarTarget?.messageId) return;
+      await toggleMessageReaction(reactionBarTarget.messageId, emoji);
+      closeReactionBar();
+    });
+    emojisWrap.appendChild(btn);
+  });
+
+  const moreBtn = reactionBarEl.querySelector('.reaction-bar-more');
+  moreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!reactionBarTarget) return;
+    openReactionPicker(moreBtn, reactionBarTarget.messageId, reactionBarTarget.friendId);
+    closeReactionBar();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!reactionBarEl || reactionBarEl.style.display === 'none') return;
+    if (reactionBarEl.contains(event.target)) return;
+    if (reactionBarTarget?.anchorEl && reactionBarTarget.anchorEl.contains(event.target)) return;
+    closeReactionBar();
+  });
+
+  // Escape closes
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeReactionBar();
+      closeReactionPicker();
+    }
+  });
+
+  return reactionBarEl;
+}
+
+function openReactionBar(anchorEl, messageId, friendId) {
+  const bar = ensureReactionBar();
+  reactionBarTarget = { anchorEl, messageId, friendId };
+  bar.style.display = 'block';
+
+  // Mobile: center above message; if not enough space, show below
+  const rect = anchorEl.getBoundingClientRect();
+  const barWidth = 360;
+  const barHeight = 56;
+  const margin = 10;
+
+  let left = rect.left + (rect.width / 2) - (barWidth / 2);
+  left = Math.max(margin, Math.min(left, window.innerWidth - barWidth - margin));
+
+  let top = rect.top - barHeight - margin;
+  if (top < margin) top = rect.bottom + margin;
+
+  bar.style.left = `${left}px`;
+  bar.style.top = `${top}px`;
+}
+
+function closeReactionBar() {
+  if (!reactionBarEl) return;
+  reactionBarEl.style.display = 'none';
+  reactionBarTarget = null;
+}
+
+function openReactionPicker(triggerEl, messageId, friendId) {
+  const picker = ensureReactionPicker();
+  reactionPickerTarget = { triggerEl, messageId, friendId };
+
+  picker.style.display = 'block';
+
+  // Mobile: bottom-sheet
+  if (window.innerWidth <= 480) {
+    picker.style.left = '0px';
+    picker.style.right = '0px';
+    picker.style.bottom = '0px';
+    picker.style.top = 'auto';
+    return;
+  }
+
+  // Desktop: position near trigger
+  const rect = triggerEl.getBoundingClientRect();
+  const pickerWidth = 360;
+  const pickerHeight = 420;
+  const margin = 8;
+
+  let left = Math.min(rect.left, window.innerWidth - pickerWidth - margin);
+  left = Math.max(margin, left);
+
+  let top = rect.top - pickerHeight - margin;
+  if (top < margin) top = rect.bottom + margin;
+  top = Math.min(window.innerHeight - margin, top);
+
+  picker.style.left = `${left}px`;
+  picker.style.top = `${top}px`;
+  picker.style.bottom = 'auto';
+  picker.style.right = 'auto';
+}
+
+function closeReactionPicker() {
+  if (!reactionPickerEl) return;
+  reactionPickerEl.style.display = 'none';
+  reactionPickerTarget = null;
+}
+
+function renderReactionsInto(messageDiv, reactions) {
+  let container = messageDiv.querySelector('.message-reactions');
+  if (!container) {
+    // Backfill for messages rendered before reactions UI existed
+    container = document.createElement('div');
+    container.className = 'message-reactions';
+    const footer = messageDiv.querySelector('.message-footer');
+    if (footer && footer.parentNode) {
+      footer.parentNode.insertBefore(container, footer);
+    } else {
+      messageDiv.appendChild(container);
+    }
+  }
+
+  container.innerHTML = '';
+  container.classList.remove('single');
+  if (!Array.isArray(reactions) || reactions.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'flex';
+
+  if (reactions.length === 1 && reactions[0]?.count === 1) {
+    container.classList.add('single');
+    const emoji = reactions[0]?.emoji || '';
+    container.style.display = 'inline-flex';
+    container.innerHTML = `<span class="single-reaction-emoji">${emoji}</span>`;
+    return;
+  }
+
+  reactions.forEach((reaction) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `reaction-chip${reaction.reacted_by_me ? ' mine' : ''}`;
+    btn.dataset.emoji = reaction.emoji;
+    btn.innerHTML = `
+      <span class="reaction-emoji">${reaction.emoji}</span>
+      ${reaction.count > 1 ? `<span class="reaction-count">${reaction.count}</span>` : ''}
+    `;
+
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const messageId = parseInt(messageDiv.dataset.messageId || '0', 10);
+      if (!messageId) return;
+      await toggleMessageReaction(messageId, reaction.emoji);
+    });
+
+    container.appendChild(btn);
+  });
+}
+
+function applyReactionsUpdate(messageId, reactions) {
+  const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (!messageEl) return;
+  renderReactionsInto(messageEl, reactions);
+}
+
+async function fetchReactionsBulk(messageIds) {
+  const token = await getToken(true);
+  if (!token || !messageIds || !messageIds.length) return;
+
+  try {
+    const response = await fetch('/messages/reactions/bulk', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message_ids: messageIds })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to load reactions');
+    }
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    items.forEach(item => {
+      if (!item || !item.message_id) return;
+      applyReactionsUpdate(item.message_id, item.reactions || []);
+    });
+  } catch (error) {
+    console.error('Failed to load reactions:', error);
+  }
+}
+
+async function toggleMessageReaction(messageId, emoji) {
+  const token = await getToken(true);
+  if (!token) return;
+
+  try {
+    const response = await fetch(`/messages/${messageId}/reactions/toggle`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ emoji })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to react');
+    }
+
+    let reactions = Array.isArray(data.reactions) ? data.reactions : [];
+    if (reactions.length === 0) {
+      // Fallback: optimistic single reaction if server returned empty list
+      reactions = [{ emoji, count: 1, reacted_by_me: true }];
+    }
+    applyReactionsUpdate(messageId, reactions);
+  } catch (error) {
+    console.error('Reaction failed:', error);
+  }
+}
+
 function renderMessageNode(friendId, message) {
   const messageType = message.message_type || 'text';
   if (!message.sender_username && message.sender) {
@@ -1980,11 +2274,14 @@ function renderMessageNode(friendId, message) {
   messageDiv.innerHTML = `
     ${replyHtml}
     ${contentHtml}
+    <div class="message-reactions" id="message-reactions-${message.id}"></div>
     <div class="message-footer">
       <span style="font-size: 10px; opacity: 0.7;">${timestamp}</span>
       ${readReceiptHtml}
     </div>
   `;
+
+  renderReactionsInto(messageDiv, message.reactions || []);
 
   wireReplyJump(messageDiv, friendId, message);
 
@@ -1998,36 +2295,40 @@ function renderMessageNode(friendId, message) {
 
 let contextMenuTarget = null;
 
-function showMessageContextMenu(e, messageId, friendId, messageType, content, messageDiv, isSentMessage) {
+function showMessageContextMenu(
+  e,
+  messageId,
+  friendId,
+  messageType,
+  content,
+  messageDiv,
+  isSentMessage
+) {
+  e.preventDefault();
+
+  // Open reaction bar first
+  openReactionBar(messageDiv, messageId, friendId);
+
+  // Then show context menu below message
   const menu = document.getElementById('message-context-menu');
   if (!menu) return;
+
   contextMenuTarget = { messageId, friendId, messageType, content, messageDiv, isSentMessage };
+
   const replyBtn = document.getElementById('context-menu-reply');
-  const editBtn = document.getElementById('context-menu-edit');
   const copyBtn = document.getElementById('context-menu-copy');
   const deleteBtn = document.getElementById('context-menu-delete');
 
-  // Show reply option for all message types
-  if (replyBtn) {
-    replyBtn.style.display = 'block';
-  }
-
-  // Show copy option for text messages only
-  if (copyBtn) {
-    copyBtn.style.display = messageType === 'text' ? 'block' : 'none';
-  }
-
-  // Show edit and delete options only for sent messages
-  if (editBtn) {
-    editBtn.style.display = (messageType === 'text' && isSentMessage) ? 'block' : 'none';
-  }
-  if (deleteBtn) {
-    deleteBtn.style.display = isSentMessage ? 'block' : 'none';
-  }
+  if (replyBtn) replyBtn.style.display = 'block';
+  if (copyBtn) copyBtn.style.display = messageType === 'text' ? 'block' : 'none';
+  if (deleteBtn) deleteBtn.style.display = isSentMessage ? 'block' : 'none';
 
   menu.style.display = 'block';
-  menu.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
-  menu.style.top = Math.min(e.clientY, window.innerHeight - 100) + 'px';
+
+  // Position menu slightly below message
+  const rect = messageDiv.getBoundingClientRect();
+  menu.style.left = rect.left + 'px';
+  menu.style.top = rect.bottom + 8 + 'px';
 }
 
 function hideMessageContextMenu() {
@@ -2059,6 +2360,14 @@ document.getElementById('context-menu-reply')?.addEventListener('click', async (
   };
 
   setReplyMode(messageId, friendId, messageData, document.getElementById(`chat-input-${friendId}`));
+});
+
+document.getElementById('context-menu-react')?.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!contextMenuTarget) return;
+  const { messageId, friendId, messageDiv } = contextMenuTarget;
+  hideMessageContextMenu();
+  openReactionBar(messageDiv, messageId, friendId);
 });
 
 // Function to copy text to clipboard
@@ -2808,6 +3117,8 @@ async function ensureSocket() {
       handleMessageEdited(data.data);
     } else if (data.type === "message_deleted") {
       handleMessageDeleted(data.data);
+    } else if (data.type === "message_reaction_updated") {
+      handleMessageReactionUpdated(data.data);
     } else if (data.type === "typing") {
       handleTypingIndicator(data.data);
     } else if (data.type === "call_start") {
@@ -2872,22 +3183,26 @@ function handleMessageDeleted(data) {
   if (messageEl) messageEl.remove();
 }
 
+function handleMessageReactionUpdated(data) {
+  if (!data || !data.message_id) return;
+  applyReactionsUpdate(data.message_id, data.reactions || []);
+}
+
 async function showDashboard() {
   dashboardCard.style.display = "block";
-  // hamburgerBtn.style.display = 'block';
   if (authWrapper) authWrapper.style.display = "none";
   sidebar.style.display = "block";
-  document.body.classList.remove("auth-view");
 
-  // Establish WebSocket connection for real-time updates
+  document.body.classList.remove("auth-view");
+  document.body.classList.add("dashboard-view");
+  document.body.classList.remove("chat-open");
+
   try {
     await ensureSocket();
   } catch (error) {
     console.error('WebSocket connection failed:', error);
-    // Continue without WebSocket for now
   }
 
-  // Fetch data (don't await these as they can run in parallel)
   fetchActiveUsers();
   fetchFriendRequests();
   fetchFriends();
@@ -2938,10 +3253,14 @@ document.getElementById('vc-cam')?.addEventListener('click', () => {
 
 function showAuth() {
   dashboardCard.style.display = "none";
-  // hamburgerBtn.style.display = 'none';
   if (authWrapper) authWrapper.style.display = "flex";
   sidebar.style.display = "none";
+
+  // ✅ Remove all other layout classes
+  document.body.classList.remove("dashboard-view");
+  document.body.classList.remove("chat-open");
   document.body.classList.add("auth-view");
+
   setAuthTab("login");
 }
 
