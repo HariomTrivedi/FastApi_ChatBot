@@ -1419,33 +1419,16 @@
         padding: 5px 8px;
         border-radius: 999px;
         border: 1px solid rgba(0, 0, 0, 0.12);
-        background: rgba(255, 255, 255, 0.96);
+        background: #fff;
         box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
         align-items: center;
-      }
-
-      .message-reactions.single {
-        bottom: 6px;
-        left: auto;
-        right: 10px;
-        padding: 0;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-        z-index: 3;
-      }
-
-      .single-reaction-emoji {
-        font-size: 16px;
-        line-height: 1;
-        display: inline-flex;
       }
 
       .chat-message.sent .message-reactions {
         left: auto;
         right: 14px;
         border-color: rgba(255, 255, 255, 0.22);
-        background: rgba(0, 0, 0, 0.22);
+        background: #325160;
       }
 
       .reaction-chip {
@@ -1534,6 +1517,7 @@
       .reaction-bar-emoji:hover {
         transform: translateY(-1px) scale(1.05);
         background: rgba(0, 0, 0, 0.06);
+        background: #386163;
       }
 
       .reaction-bar-more {
@@ -1546,12 +1530,13 @@
         font-size: 13px;
         font-weight: 700;
         color: var(--ink-900);
-        transition: transform 0.12s ease, background 0.12s ease;
+        
       }
 
       .reaction-bar-more:hover {
         transform: translateY(-1px);
-        background: rgba(0, 0, 0, 0.06);
+        color : #fff;
+        background: #386163;
       }
 
       /* Reaction picker (global) */
@@ -1603,7 +1588,8 @@
       }
 
       .context-menu-item:hover {
-        background: rgba(126, 99, 99, 0.12);
+        color: #fff;
+        background: #386163;
       }
 
       .context-menu-item.danger {

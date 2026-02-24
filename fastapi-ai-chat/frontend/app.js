@@ -1949,7 +1949,7 @@ function ensureReactionBar() {
   reactionBarEl.innerHTML = `
     <div class="reaction-bar-inner">
       <div class="reaction-bar-emojis"></div>
-      <button type="button" class="reaction-bar-more" title="More" aria-label="More reactions">😊+</button>
+      <button type="button" class="reaction-bar-more" title="More" aria-label="More reactions">+</button>
     </div>
   `;
 
@@ -2081,7 +2081,7 @@ function renderReactionsInto(messageDiv, reactions) {
   }
 
   container.innerHTML = '';
-  container.classList.remove('single');
+
   if (!Array.isArray(reactions) || reactions.length === 0) {
     container.style.display = 'none';
     return;
@@ -2089,19 +2089,12 @@ function renderReactionsInto(messageDiv, reactions) {
 
   container.style.display = 'flex';
 
-  if (reactions.length === 1 && reactions[0]?.count === 1) {
-    container.classList.add('single');
-    const emoji = reactions[0]?.emoji || '';
-    container.style.display = 'inline-flex';
-    container.innerHTML = `<span class="single-reaction-emoji">${emoji}</span>`;
-    return;
-  }
-
   reactions.forEach((reaction) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `reaction-chip${reaction.reacted_by_me ? ' mine' : ''}`;
     btn.dataset.emoji = reaction.emoji;
+
     btn.innerHTML = `
       <span class="reaction-emoji">${reaction.emoji}</span>
       ${reaction.count > 1 ? `<span class="reaction-count">${reaction.count}</span>` : ''}

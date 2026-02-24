@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      # Add your secrets here or in a .env file
+      # OPENAI_API_KEY: ""
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+      - ./chatbot.db:/app/chatbot.db
